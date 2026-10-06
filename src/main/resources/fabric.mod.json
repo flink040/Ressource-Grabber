@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "resourcegrabber",
+  "version": "${version}",
+  "name": "Resource Grabber",
+  "description": "Saves server resource packs and provides a searchable browser for their Custom Model Data items.",
+  "authors": ["Flink040"],
+  "contact": {
+    "sources": "https://github.com/flink040/Ressource-Grabber",
+    "issues": "https://github.com/flink040/Ressource-Grabber/issues"
+  },
+  "license": "GPL-3.0-only",
+  "icon": "assets/resourcegrabber/icon-v2.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["de.opsucht.resourcegrabber.ResourceGrabberClient"]
+  },
+  "mixins": [
+    { "config": "resourcegrabber.mixins.json", "environment": "client" }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "fabric-api": "*",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  }
+}

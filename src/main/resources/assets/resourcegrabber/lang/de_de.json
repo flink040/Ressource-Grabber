@@ -1,0 +1,11 @@
+{
+  "message.resourcegrabber.saved": "Resource Grabber: %s wurde gespeichert.",
+  "message.resourcegrabber.failed": "Resource Grabber: Serverpaket konnte nicht verarbeitet werden. Details stehen im Log.",
+  "message.resourcegrabber.custom_items_empty": "Kein gespeichertes Ressourcenpaket mit Custom-Model-Items gefunden.",
+  "message.resourcegrabber.custom_items_loading": "Resource Grabber: gespeichertes Ressourcenpaket wird eingelesen …",
+  "message.resourcegrabber.custom_items_load_failed": "Resource Grabber konnte das gespeicherte Ressourcenpaket nicht einlesen. Details stehen im Log.",
+  "message.resourcegrabber.custom_items_ready": "Resource Grabber: %s Custom-Model-Items gefunden. Öffne sie mit /customitems.",
+  "screen.resourcegrabber.custom_items": "Custom Items",
+  "screen.resourcegrabber.search": "Name, Modell, Item oder CMD suchen …",
+  "screen.resourcegrabber.page": "Seite %s / %s · %s Items · Linksklick gibt das Item"
+}

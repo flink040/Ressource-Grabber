@@ -1,0 +1,11 @@
+{
+  "message.resourcegrabber.saved": "Resource Grabber: saved %s.",
+  "message.resourcegrabber.failed": "Resource Grabber: could not process the server pack. See the log for details.",
+  "message.resourcegrabber.custom_items_empty": "No saved resource pack with custom-model items was found.",
+  "message.resourcegrabber.custom_items_loading": "Resource Grabber: reading the saved resource pack…",
+  "message.resourcegrabber.custom_items_load_failed": "Resource Grabber could not read the saved resource pack. See the log for details.",
+  "message.resourcegrabber.custom_items_ready": "Resource Grabber: found %s custom-model items. Open them with /customitems.",
+  "screen.resourcegrabber.custom_items": "Custom Items",
+  "screen.resourcegrabber.search": "Search name, model, item, or CMD…",
+  "screen.resourcegrabber.page": "Page %s / %s · %s items · Left-click to give"
+}
