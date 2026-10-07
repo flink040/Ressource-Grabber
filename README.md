@@ -17,6 +17,7 @@ This branch targets Minecraft 26.2. The Minecraft 1.21.11 source remains on the
 - Supports modern `assets/<namespace>/items/*.json` range dispatches and legacy
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
+- Includes an on/off slider for learned lore in item hover tooltips.
 - Generates the matching `/give @s ...` command when an item is clicked.
 - Learns server-assigned item names and lore from custom items seen in
   inventories and containers and remembers them for future sessions.
