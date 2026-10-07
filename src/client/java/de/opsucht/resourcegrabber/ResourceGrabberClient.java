@@ -109,6 +109,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         }
         LearnedItemNames.observe(serverName,
             client.player.containerMenu.getCarried());
+        ChestShopScanner.scan(client, serverName);
         if (++itemNameSaveTicks >= 10) {
             itemNameSaveTicks = 0;
             LearnedItemNames.saveIfDirty();

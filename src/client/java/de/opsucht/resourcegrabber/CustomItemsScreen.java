@@ -79,6 +79,8 @@ public final class CustomItemsScreen extends Screen {
         } else {
             this.filteredItems = this.allItems.stream()
                 .filter(entry -> entry.displayName().toLowerCase(Locale.ROOT).contains(normalized)
+                    || entry.lore().stream().anyMatch(line ->
+                        line.toLowerCase(Locale.ROOT).contains(normalized))
                     || entry.modelId().toLowerCase(Locale.ROOT).contains(normalized)
                     || entry.itemId().toLowerCase(Locale.ROOT).contains(normalized)
                     || entry.formattedThreshold().contains(normalized))
