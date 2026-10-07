@@ -2,23 +2,23 @@ package de.opsucht.resourcegrabber;
 
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 public final class CustomItemsScreen extends Screen {
     private static final int CELL_SIZE = 34;
 
     private final List<CustomItemEntry> allItems;
     private List<CustomItemEntry> filteredItems;
-    private TextFieldWidget searchField;
-    private ButtonWidget previousButton;
-    private ButtonWidget nextButton;
+    private EditBox searchField;
+    private Button previousButton;
+    private Button nextButton;
     private int page;
     private int columns;
     private int rows;
@@ -27,7 +27,7 @@ public final class CustomItemsScreen extends Screen {
     private int gridY;
 
     public CustomItemsScreen(List<CustomItemEntry> items) {
-        super(Text.translatable("screen.resourcegrabber.custom_items"));
+        super(Component.translatable("screen.resourcegrabber.custom_items"));
         this.allItems = List.copyOf(items);
         this.filteredItems = this.allItems;
     }
@@ -40,35 +40,35 @@ public final class CustomItemsScreen extends Screen {
         this.gridX = (this.width - this.columns * CELL_SIZE) / 2;
         this.gridY = 52;
 
-        this.searchField = new TextFieldWidget(this.textRenderer,
+        this.searchField = new EditBox(this.font,
             this.width / 2 - 120, 25, 240, 20,
-            Text.translatable("screen.resourcegrabber.search"));
-        this.searchField.setPlaceholder(Text.translatable("screen.resourcegrabber.search"));
+            Component.translatable("screen.resourcegrabber.search"));
+        this.searchField.setHint(Component.translatable("screen.resourcegrabber.search"));
         this.searchField.setMaxLength(128);
-        this.searchField.setChangedListener(query -> {
+        this.searchField.setResponder(query -> {
             this.page = 0;
             this.refreshFilter(query);
         });
-        this.addDrawableChild(this.searchField);
+        this.addRenderableWidget(this.searchField);
 
         int buttonY = this.height - 28;
-        this.previousButton = this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("<"), button -> {
+        this.previousButton = this.addRenderableWidget(Button.builder(
+            Component.literal("<"), button -> {
                 if (this.page > 0) {
                     this.page--;
                     this.updateButtons();
                 }
-            }).dimensions(this.width / 2 - 105, buttonY, 40, 20).build());
-        this.nextButton = this.addDrawableChild(ButtonWidget.builder(
-            Text.literal(">"), button -> {
+            }).bounds(this.width / 2 - 105, buttonY, 40, 20).build());
+        this.nextButton = this.addRenderableWidget(Button.builder(
+            Component.literal(">"), button -> {
                 if (this.page + 1 < this.pageCount()) {
                     this.page++;
                     this.updateButtons();
                 }
-            }).dimensions(this.width / 2 + 65, buttonY, 40, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(
-            Text.translatable("gui.done"), button -> this.close())
-            .dimensions(this.width / 2 - 50, buttonY, 100, 20).build());
+            }).bounds(this.width / 2 + 65, buttonY, 40, 20).build());
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("gui.done"), button -> this.onClose())
+            .bounds(this.width / 2 - 50, buttonY, 100, 20).build());
         this.updateButtons();
     }
 
@@ -101,10 +101,10 @@ public final class CustomItemsScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title,
-            this.width / 2, 7, 0xFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        super.extractRenderState(graphics, mouseX, mouseY, delta);
+        graphics.centeredText(this.font, this.title,
+            this.width / 2, 7, 0xFFFFFFFF);
 
         int first = this.page * this.pageSize;
         CustomItemEntry hovered = null;
@@ -115,45 +115,44 @@ public final class CustomItemsScreen extends Screen {
             int y = this.gridY + (slot / this.columns) * CELL_SIZE;
             boolean isHovered = mouseX >= x && mouseX < x + CELL_SIZE - 2
                 && mouseY >= y && mouseY < y + CELL_SIZE - 2;
-            context.fill(x, y, x + CELL_SIZE - 2, y + CELL_SIZE - 2,
+            graphics.fill(x, y, x + CELL_SIZE - 2, y + CELL_SIZE - 2,
                 isHovered ? 0xCC8A5A35 : 0xAA2A1A12);
-            context.fill(x + 1, y + 1, x + CELL_SIZE - 3, y + CELL_SIZE - 3,
+            graphics.fill(x + 1, y + 1, x + CELL_SIZE - 3, y + CELL_SIZE - 3,
                 isHovered ? 0xCC3D271B : 0xAA17100C);
             ItemStack stack = entry.createStack();
-            context.drawItem(stack, x + 8, y + 4);
+            graphics.item(stack, x + 8, y + 4);
             String value = entry.formattedThreshold();
             if (value.length() > 5) {
                 value = value.substring(value.length() - 5);
             }
-            context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(value),
-                x + (CELL_SIZE - 2) / 2, y + 23, 0xC8B49D);
+            graphics.centeredText(this.font, Component.literal(value),
+                x + (CELL_SIZE - 2) / 2, y + 23, 0xFFC8B49D);
             if (isHovered) {
                 hovered = entry;
                 hoveredStack = stack;
             }
         }
 
-        super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(this.textRenderer,
-            Text.translatable("screen.resourcegrabber.page",
+        graphics.centeredText(this.font,
+            Component.translatable("screen.resourcegrabber.page",
                 this.page + 1, this.pageCount(), this.filteredItems.size()),
-            this.width / 2, this.height - 41, 0xC8B49D);
+            this.width / 2, this.height - 41, 0xFFC8B49D);
         if (hovered != null) {
-            context.drawItemTooltip(this.textRenderer, hoveredStack, mouseX, mouseY);
+            graphics.setTooltipForNextFrame(this.font, hoveredStack, mouseX, mouseY);
         }
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        if (super.mouseClicked(click, doubled)) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        if (super.mouseClicked(event, doubled)) {
             return true;
         }
-        if (click.button() != 0) {
+        if (event.button() != 0) {
             return false;
         }
-        int column = ((int)click.x() - this.gridX) / CELL_SIZE;
-        int row = ((int)click.y() - this.gridY) / CELL_SIZE;
-        if (click.x() < this.gridX || click.y() < this.gridY
+        int column = ((int)event.x() - this.gridX) / CELL_SIZE;
+        int row = ((int)event.y() - this.gridY) / CELL_SIZE;
+        if (event.x() < this.gridX || event.y() < this.gridY
             || column < 0 || column >= this.columns || row < 0 || row >= this.rows) {
             return false;
         }
@@ -162,16 +161,16 @@ public final class CustomItemsScreen extends Screen {
             return false;
         }
         CustomItemEntry entry = this.filteredItems.get(index);
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getNetworkHandler() != null) {
-            client.getNetworkHandler().sendChatCommand(entry.giveCommand());
+        Minecraft client = Minecraft.getInstance();
+        if (client.getConnection() != null) {
+            client.getConnection().sendCommand(entry.giveCommand());
             return true;
         }
         return false;
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

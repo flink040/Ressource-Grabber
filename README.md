@@ -1,8 +1,11 @@
 # Resource Grabber
 
-Resource Grabber is a client-side Fabric mod for Minecraft 1.21.11. It saves
+Resource Grabber is a client-side Fabric mod for Minecraft 26.2. It saves
 successfully downloaded server resource packs and provides a searchable browser
 for their Custom Model Data items.
+
+This branch targets Minecraft 26.2. The Minecraft 1.21.11 source remains on the
+[`main`](https://github.com/flink040/Ressource-Grabber/tree/main) branch.
 
 ## Features
 
@@ -20,10 +23,10 @@ for their Custom Model Data items.
 
 ## Requirements
 
-- Minecraft 1.21.11
-- Fabric Loader 0.18.1 or newer
-- Fabric API
-- Java 21
+- Minecraft 26.2
+- Fabric Loader 0.19.5 or newer
+- Fabric API 0.160.0+26.2 or newer
+- Java 25
 
 ## Usage
 
@@ -70,7 +73,7 @@ On Windows:
 .\gradlew.bat build
 ```
 
-The remapped release JAR is written to `build/libs`.
+The release JAR is written to `build/libs`.
 
 ## License
 

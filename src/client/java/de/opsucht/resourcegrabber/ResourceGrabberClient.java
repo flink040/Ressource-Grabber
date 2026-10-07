@@ -37,14 +37,14 @@ import java.util.zip.ZipFile;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.Slot;
 import org.slf4j.Logger;
 
 public final class ResourceGrabberClient implements ClientModInitializer {
@@ -68,7 +68,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         config = loadConfig();
         LearnedItemNames.load();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-            dispatcher.register(ClientCommandManager.literal("customitems").executes(context -> {
+            dispatcher.register(ClientCommands.literal("customitems").executes(context -> {
                 requestCustomItemsMenu();
                 return 1;
             })));
@@ -98,17 +98,17 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         LOGGER.info("Opening the custom items menu on the next client tick");
     }
 
-    private static void observeVisibleCustomItems(MinecraftClient client) {
+    private static void observeVisibleCustomItems(Minecraft client) {
         if (client.player == null || ++itemNameScanTicks < 10) {
             return;
         }
         itemNameScanTicks = 0;
         String serverName = CustomItemCatalog.sourceServer();
-        for (Slot slot : client.player.currentScreenHandler.slots) {
-            LearnedItemNames.observe(serverName, slot.getStack());
+        for (Slot slot : client.player.containerMenu.slots) {
+            LearnedItemNames.observe(serverName, slot.getItem());
         }
         LearnedItemNames.observe(serverName,
-            client.player.currentScreenHandler.getCursorStack());
+            client.player.containerMenu.getCarried());
         if (++itemNameSaveTicks >= 10) {
             itemNameSaveTicks = 0;
             LearnedItemNames.saveIfDirty();
@@ -116,10 +116,10 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     public static void openCustomItemsMenu() {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         List<CustomItemEntry> items = CustomItemCatalog.snapshot();
         if (!items.isEmpty()) {
-            client.setScreen(new CustomItemsScreen(items));
+            client.gui.setScreen(new CustomItemsScreen(items));
             return;
         }
 
@@ -128,7 +128,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         COPY_EXECUTOR.execute(() -> {
             try {
                 Optional<Path> savedPack = findNewestSavedPack(
-                    client.getResourcePackDir(), serverName);
+                    client.getResourcePackDirectory(), serverName);
                 if (savedPack.isEmpty()) {
                     notifyClient("message.resourcegrabber.custom_items_empty", null);
                     return;
@@ -144,7 +144,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
 
                 LOGGER.info("Loaded {} custom-model items from {}",
                     loadedSnapshot.size(), savedPack.get());
-                client.execute(() -> client.setScreen(new CustomItemsScreen(loadedSnapshot)));
+                client.execute(() -> client.gui.setScreen(new CustomItemsScreen(loadedSnapshot)));
             } catch (IOException | RuntimeException exception) {
                 LOGGER.error("Could not load custom-model items from a saved resource pack", exception);
                 notifyClient("message.resourcegrabber.custom_items_load_failed", null);
@@ -153,12 +153,12 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     public static String getCurrentServerName() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        ServerInfo server = client.getCurrentServerEntry();
-        if (server != null && server.address != null && !server.address.isBlank()) {
-            return sanitize(server.address);
+        Minecraft client = Minecraft.getInstance();
+        ServerData server = client.getCurrentServer();
+        if (server != null && server.ip != null && !server.ip.isBlank()) {
+            return sanitize(server.ip);
         }
-        return client.isInSingleplayer() ? "singleplayer" : "server";
+        return client.hasSingleplayerServer() ? "singleplayer" : "server";
     }
 
     public static void capture(Map<UUID, Path> downloadedPacks, String serverName) {
@@ -198,7 +198,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
 
         String contentHash = sha256(source);
         String safeServerName = sanitize(serverName);
-        Path resourcePackDirectory = MinecraftClient.getInstance().getResourcePackDir();
+        Path resourcePackDirectory = Minecraft.getInstance().getResourcePackDirectory();
         Files.createDirectories(resourcePackDirectory);
 
         Optional<Path> existingCopy = findExistingCopy(
@@ -400,15 +400,15 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     private static void notifyClient(String translationKey, String argument) {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player == null) {
                 return;
             }
-            Text message = argument == null
-                ? Text.translatable(translationKey)
-                : Text.translatable(translationKey, argument);
-            client.inGameHud.getChatHud().addMessage(message);
+            Component message = argument == null
+                ? Component.translatable(translationKey)
+                : Component.translatable(translationKey, argument);
+            client.gui.hud.getChat().addClientSystemMessage(message);
         });
     }
 

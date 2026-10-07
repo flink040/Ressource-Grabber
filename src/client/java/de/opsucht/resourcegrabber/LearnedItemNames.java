@@ -16,11 +16,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.CustomModelDataComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomModelData;
 import org.slf4j.Logger;
 
 public final class LearnedItemNames {
@@ -55,20 +55,20 @@ public final class LearnedItemNames {
         if (stack.isEmpty()) {
             return;
         }
-        CustomModelDataComponent modelData = stack.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        CustomModelData modelData = stack.get(DataComponents.CUSTOM_MODEL_DATA);
         if (modelData == null || modelData.floats().isEmpty()) {
             return;
         }
 
-        Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
+        Component name = stack.get(DataComponents.CUSTOM_NAME);
         if (name == null) {
-            name = stack.get(DataComponentTypes.ITEM_NAME);
+            name = stack.get(DataComponents.ITEM_NAME);
         }
         if (name == null || name.getString().isBlank()) {
             return;
         }
 
-        String itemId = Registries.ITEM.getId(stack.getItem()).toString();
+        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         String displayName = name.getString().strip();
         Map<String, String> serverNames = namesByServer.computeIfAbsent(
             serverName, ignored -> new HashMap<>());

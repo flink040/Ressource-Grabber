@@ -22,8 +22,8 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 
 public final class CustomItemCatalog {
@@ -127,7 +127,7 @@ public final class CustomItemCatalog {
 
     private static boolean isKnownItem(String itemId) {
         Identifier identifier = Identifier.tryParse(itemId);
-        return identifier != null && Registries.ITEM.containsId(identifier);
+        return identifier != null && BuiltInRegistries.ITEM.containsKey(identifier);
     }
 
     private static void readModernModels(

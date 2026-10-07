@@ -4,14 +4,14 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.CustomModelDataComponent;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomModelData;
 
 public record CustomItemEntry(
     String itemId,
@@ -23,11 +23,11 @@ public record CustomItemEntry(
         Identifier id = Identifier.tryParse(this.itemId);
         Item item = id == null
             ? Items.PAPER
-            : Registries.ITEM.getOptionalValue(id).orElse(Items.PAPER);
+            : BuiltInRegistries.ITEM.getOptional(id).orElse(Items.PAPER);
         ItemStack stack = new ItemStack(item);
-        stack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(
             this.floatValues(), List.of(), List.of(), List.of()));
-        stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(
             this.displayName() + "  [CMD " + this.formattedThreshold() + "]"));
         return stack;
     }
