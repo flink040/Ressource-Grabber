@@ -70,6 +70,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     public void onInitializeClient() {
         config = loadConfig();
         LearnedItemNames.load();
+        LearnedChestShopIds.load();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(ClientCommandManager.literal("customitems").executes(context -> {
                 requestCustomItemsMenu();
@@ -91,6 +92,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             LearnedItemNames.saveIfDirty();
+            LearnedChestShopIds.saveIfDirty();
             COPY_EXECUTOR.shutdown();
         });
         LOGGER.info("Resource Grabber initialized (enabled: {})", config.enabled);
@@ -121,6 +123,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         if (++itemNameSaveTicks >= 10) {
             itemNameSaveTicks = 0;
             LearnedItemNames.saveIfDirty();
+            LearnedChestShopIds.saveIfDirty();
         }
     }
 

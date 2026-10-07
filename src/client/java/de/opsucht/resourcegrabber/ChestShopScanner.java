@@ -52,6 +52,8 @@ public final class ChestShopScanner {
         }
         String signLabel = findNearestShopLabel(client, entity.getBlockPos());
         if (signLabel != null) {
+            LearnedChestShopIds.observe(serverName,
+                LearnedChestShopIds.currentWorldScope(), stack, signLabel);
             return LearnedItemNames.observe(serverName, stack, signLabel);
         }
         return LearnedItemNames.LearningResult.NONE;

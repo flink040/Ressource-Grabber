@@ -11,6 +11,8 @@
   "screen.resourcegrabber.search": "Search name, model, item, or CMD…",
   "screen.resourcegrabber.lore_on": "Lore: [—●]",
   "screen.resourcegrabber.lore_off": "Lore: [●—]",
+  "screen.resourcegrabber.chestshop_id_on": "Shop ID [—●]",
+  "screen.resourcegrabber.chestshop_id_off": "Shop ID [●—]",
   "screen.resourcegrabber.learned": "Recognized: %s / %s",
   "screen.resourcegrabber.page": "Page %s / %s · %s items · Left-click to give"
 }

@@ -22,6 +22,8 @@ for their Custom Model Data items.
   inventories and containers and remembers them for future sessions.
 - Scans nearby ChestShop item holograms and associates them with the closest
   valid shop sign without opening the chest. Prices and player names are ignored.
+- Learns the full ChestShop item ID per detected world context and can display
+  known IDs in `/customitems` with a separate on/off slider.
 
 ## Requirements
 
@@ -55,6 +57,11 @@ is displayed in the `/customitems` tooltip. ChestShop scanning supports item
 displays, dropped-item entities and armor-stand equipment. A shop without an
 item hologram cannot expose its item data to the client until the server sends
 that item through another inventory or display.
+
+ChestShop IDs are stored in `config/resourcegrabber-chestshop-ids.json`, grouped
+by server, detected scoreboard/dimension context, base item and CMD value. If a
+server exposes multiple worlds with the same client-visible context, all unique
+IDs are retained and displayed instead of overwriting each other.
 
 ## Configuration
 

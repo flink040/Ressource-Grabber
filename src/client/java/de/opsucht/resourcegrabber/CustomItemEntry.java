@@ -21,10 +21,14 @@ public record CustomItemEntry(
     String modelId
 ) {
     public ItemStack createStack() {
-        return this.createStack(true);
+        return this.createStack(true, true);
     }
 
     public ItemStack createStack(boolean includeLore) {
+        return this.createStack(includeLore, true);
+    }
+
+    public ItemStack createStack(boolean includeLore, boolean includeChestShopIds) {
         Identifier id = Identifier.tryParse(this.itemId);
         Item item = id == null
             ? Items.PAPER
@@ -34,9 +38,15 @@ public record CustomItemEntry(
             this.floatValues(), List.of(), List.of(), List.of()));
         stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(
             this.displayName() + "  [CMD " + this.formattedThreshold() + "]"));
-        List<String> learnedLore = this.lore();
-        if (includeLore && !learnedLore.isEmpty()) {
-            stack.set(DataComponentTypes.LORE, new LoreComponent(learnedLore.stream()
+        List<String> tooltipLines = new ArrayList<>();
+        if (includeLore) {
+            tooltipLines.addAll(this.lore());
+        }
+        if (includeChestShopIds) {
+            tooltipLines.addAll(this.chestShopIds());
+        }
+        if (!tooltipLines.isEmpty()) {
+            stack.set(DataComponentTypes.LORE, new LoreComponent(tooltipLines.stream()
                 .<Text>map(Text::literal)
                 .toList()));
         }
@@ -89,6 +99,11 @@ public record CustomItemEntry(
 
     public List<String> lore() {
         return LearnedItemNames.findLore(CustomItemCatalog.sourceServer(),
+            this.itemId, this.floatIndex, this.threshold);
+    }
+
+    public List<String> chestShopIds() {
+        return LearnedChestShopIds.tooltipLines(CustomItemCatalog.sourceServer(),
             this.itemId, this.floatIndex, this.threshold);
     }
 
