@@ -5,9 +5,12 @@
   "message.resourcegrabber.custom_items_loading": "Resource Grabber: gespeichertes Ressourcenpaket wird eingelesen …",
   "message.resourcegrabber.custom_items_load_failed": "Resource Grabber konnte das gespeicherte Ressourcenpaket nicht einlesen. Details stehen im Log.",
   "message.resourcegrabber.custom_items_ready": "Resource Grabber: %s Custom-Model-Items gefunden. Öffne sie mit /customitems.",
+  "message.resourcegrabber.learned": "◆ ResourceGrabber  +%s Items erkannt",
+  "message.resourcegrabber.learned_detailed": "◆ ResourceGrabber  Item erkannt: %s",
   "screen.resourcegrabber.custom_items": "Custom Items",
   "screen.resourcegrabber.search": "Name, Modell, Item oder CMD suchen …",
   "screen.resourcegrabber.lore_on": "Lore: [—●]",
   "screen.resourcegrabber.lore_off": "Lore: [●—]",
+  "screen.resourcegrabber.learned": "Erkannt: %s / %s",
   "screen.resourcegrabber.page": "Seite %s / %s · %s Items · Linksklick gibt das Item"
 }

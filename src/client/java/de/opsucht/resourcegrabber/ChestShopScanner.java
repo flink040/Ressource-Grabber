@@ -18,35 +18,43 @@ public final class ChestShopScanner {
     private static final double ENTITY_SCAN_RADIUS = 24.0D;
     private static final int SIGN_SCAN_RADIUS = 4;
 
-    public static void scan(Minecraft client, String serverName) {
+    public static LearnedItemNames.LearningResult scan(
+        Minecraft client, String serverName
+    ) {
         if (client.player == null || client.level == null) {
-            return;
+            return LearnedItemNames.LearningResult.NONE;
         }
+        LearnedItemNames.LearningResult learned = LearnedItemNames.LearningResult.NONE;
         List<Entity> nearby = client.level.getEntities(client.player,
             client.player.getBoundingBox().inflate(ENTITY_SCAN_RADIUS));
         for (Entity entity : nearby) {
             if (entity instanceof Display.ItemDisplay display) {
-                observeHologram(client, serverName, entity, display.getItemStack());
+                learned = learned.merge(observeHologram(
+                    client, serverName, entity, display.getItemStack()));
             } else if (entity instanceof ItemEntity itemEntity) {
-                observeHologram(client, serverName, entity, itemEntity.getItem());
+                learned = learned.merge(observeHologram(
+                    client, serverName, entity, itemEntity.getItem()));
             } else if (entity instanceof ArmorStand armorStand) {
                 for (EquipmentSlot slot : EquipmentSlot.values()) {
-                    observeHologram(client, serverName, entity, armorStand.getItemBySlot(slot));
+                    learned = learned.merge(observeHologram(
+                        client, serverName, entity, armorStand.getItemBySlot(slot)));
                 }
             }
         }
+        return learned;
     }
 
-    private static void observeHologram(
+    private static LearnedItemNames.LearningResult observeHologram(
         Minecraft client, String serverName, Entity entity, ItemStack stack
     ) {
         if (stack.isEmpty()) {
-            return;
+            return LearnedItemNames.LearningResult.NONE;
         }
         String signLabel = findNearestShopLabel(client, entity.blockPosition());
         if (signLabel != null) {
-            LearnedItemNames.observe(serverName, stack, signLabel);
+            return LearnedItemNames.observe(serverName, stack, signLabel);
         }
+        return LearnedItemNames.LearningResult.NONE;
     }
 
     private static String findNearestShopLabel(Minecraft client, BlockPos center) {

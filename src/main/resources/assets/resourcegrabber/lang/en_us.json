@@ -5,9 +5,12 @@
   "message.resourcegrabber.custom_items_loading": "Resource Grabber: reading the saved resource pack…",
   "message.resourcegrabber.custom_items_load_failed": "Resource Grabber could not read the saved resource pack. See the log for details.",
   "message.resourcegrabber.custom_items_ready": "Resource Grabber: found %s custom-model items. Open them with /customitems.",
+  "message.resourcegrabber.learned": "◆ ResourceGrabber  +%s items recognized",
+  "message.resourcegrabber.learned_detailed": "◆ ResourceGrabber  Item recognized: %s",
   "screen.resourcegrabber.custom_items": "Custom Items",
   "screen.resourcegrabber.search": "Search name, model, item, or CMD…",
   "screen.resourcegrabber.lore_on": "Lore: [—●]",
   "screen.resourcegrabber.lore_off": "Lore: [●—]",
+  "screen.resourcegrabber.learned": "Recognized: %s / %s",
   "screen.resourcegrabber.page": "Page %s / %s · %s items · Left-click to give"
 }

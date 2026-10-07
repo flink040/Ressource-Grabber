@@ -62,6 +62,9 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     private static volatile boolean customItemsMenuRequested;
     private static int itemNameScanTicks;
     private static int itemNameSaveTicks;
+    private static int learningFeedbackCooldownTicks = 100;
+    private static int pendingLearnedItems;
+    private static String latestLearnedName = "";
 
     @Override
     public void onInitializeClient() {
@@ -99,21 +102,66 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     private static void observeVisibleCustomItems(Minecraft client) {
+        if (learningFeedbackCooldownTicks < 100) {
+            learningFeedbackCooldownTicks++;
+        }
         if (client.player == null || ++itemNameScanTicks < 10) {
             return;
         }
         itemNameScanTicks = 0;
         String serverName = CustomItemCatalog.sourceServer();
+        LearnedItemNames.LearningResult learned = LearnedItemNames.LearningResult.NONE;
         for (Slot slot : client.player.containerMenu.slots) {
-            LearnedItemNames.observe(serverName, slot.getItem());
+            learned = learned.merge(LearnedItemNames.observe(serverName, slot.getItem()));
         }
-        LearnedItemNames.observe(serverName,
-            client.player.containerMenu.getCarried());
-        ChestShopScanner.scan(client, serverName);
+        learned = learned.merge(LearnedItemNames.observe(serverName,
+            client.player.containerMenu.getCarried()));
+        learned = learned.merge(ChestShopScanner.scan(client, serverName));
+        queueLearningFeedback(client, learned);
         if (++itemNameSaveTicks >= 10) {
             itemNameSaveTicks = 0;
             LearnedItemNames.saveIfDirty();
         }
+    }
+
+    private static void queueLearningFeedback(
+        Minecraft client, LearnedItemNames.LearningResult learned
+    ) {
+        if (learned.count() > 0 && !learningFeedbackMode().equals("off")) {
+            pendingLearnedItems += learned.count();
+            if (!learned.latestName().isBlank()) {
+                latestLearnedName = learned.latestName();
+            }
+        }
+        if (pendingLearnedItems == 0 || learningFeedbackCooldownTicks < 100) {
+            return;
+        }
+        Component message;
+        if (learningFeedbackMode().equals("detailed")
+            && pendingLearnedItems == 1 && !latestLearnedName.isBlank()) {
+            message = Component.translatable(
+                "message.resourcegrabber.learned_detailed", latestLearnedName);
+        } else {
+            message = Component.translatable(
+                "message.resourcegrabber.learned", pendingLearnedItems);
+        }
+        client.gui.hud.setOverlayMessage(message, false);
+        pendingLearnedItems = 0;
+        latestLearnedName = "";
+        learningFeedbackCooldownTicks = 0;
+    }
+
+    public static boolean showLearningCounter() {
+        return !learningFeedbackMode().equals("off");
+    }
+
+    private static String learningFeedbackMode() {
+        String mode = config.learningFeedback;
+        if (mode == null) {
+            return "subtle";
+        }
+        mode = mode.strip().toLowerCase(java.util.Locale.ROOT);
+        return mode.equals("off") || mode.equals("detailed") ? mode : "subtle";
     }
 
     public static void openCustomItemsMenu() {
@@ -457,6 +505,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     private static final class Config {
         private boolean enabled = true;
         private boolean showChatMessage = true;
+        private String learningFeedback = "subtle";
     }
 
     private static final class DaemonThreadFactory implements ThreadFactory {
