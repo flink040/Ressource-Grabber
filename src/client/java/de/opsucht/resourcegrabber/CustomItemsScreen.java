@@ -20,7 +20,9 @@ public final class CustomItemsScreen extends Screen {
     private Button previousButton;
     private Button nextButton;
     private Button loreButton;
+    private Button chestShopIdButton;
     private boolean showLore = true;
+    private boolean showChestShopIds = true;
     private int page;
     private int columns;
     private int rows;
@@ -45,10 +47,10 @@ public final class CustomItemsScreen extends Screen {
         this.gridY = 52;
         this.refreshKnownItemCount();
 
-        int loreButtonWidth = 92;
-        int controlsWidth = Math.min(338, this.width - 24);
-        int searchWidth = Math.max(100, controlsWidth - loreButtonWidth - 6);
-        int controlsX = (this.width - searchWidth - loreButtonWidth - 6) / 2;
+        int toggleWidth = 90;
+        int controlsWidth = Math.min(432, this.width - 24);
+        int searchWidth = Math.max(100, controlsWidth - toggleWidth * 2 - 12);
+        int controlsX = (this.width - searchWidth - toggleWidth * 2 - 12) / 2;
         this.searchField = new EditBox(this.font,
             controlsX, 25, searchWidth, 20,
             Component.translatable("screen.resourcegrabber.search"));
@@ -63,7 +65,13 @@ public final class CustomItemsScreen extends Screen {
             this.loreButtonText(), button -> {
                 this.showLore = !this.showLore;
                 button.setMessage(this.loreButtonText());
-            }).bounds(controlsX + searchWidth + 6, 25, loreButtonWidth, 20).build());
+            }).bounds(controlsX + searchWidth + 6, 25, toggleWidth, 20).build());
+        this.chestShopIdButton = this.addRenderableWidget(Button.builder(
+            this.chestShopIdButtonText(), button -> {
+                this.showChestShopIds = !this.showChestShopIds;
+                button.setMessage(this.chestShopIdButtonText());
+            }).bounds(controlsX + searchWidth + toggleWidth + 12, 25,
+                toggleWidth, 20).build());
 
         int buttonY = this.height - 28;
         this.previousButton = this.addRenderableWidget(Button.builder(
@@ -94,6 +102,8 @@ public final class CustomItemsScreen extends Screen {
             this.filteredItems = this.allItems.stream()
                 .filter(entry -> entry.displayName().toLowerCase(Locale.ROOT).contains(normalized)
                     || entry.lore().stream().anyMatch(line ->
+                        line.toLowerCase(Locale.ROOT).contains(normalized))
+                    || entry.chestShopIds().stream().anyMatch(line ->
                         line.toLowerCase(Locale.ROOT).contains(normalized))
                     || entry.modelId().toLowerCase(Locale.ROOT).contains(normalized)
                     || entry.itemId().toLowerCase(Locale.ROOT).contains(normalized)
@@ -149,7 +159,8 @@ public final class CustomItemsScreen extends Screen {
                 isHovered ? 0xCC8A5A35 : 0xAA2A1A12);
             graphics.fill(x + 1, y + 1, x + CELL_SIZE - 3, y + CELL_SIZE - 3,
                 isHovered ? 0xCC3D271B : 0xAA17100C);
-            ItemStack stack = entry.createStack(this.showLore);
+            ItemStack stack = entry.createStack(
+                this.showLore, this.showChestShopIds);
             graphics.item(stack, x + 8, y + 4);
             String value = entry.formattedThreshold();
             if (value.length() > 5) {
@@ -215,5 +226,11 @@ public final class CustomItemsScreen extends Screen {
         return Component.translatable(this.showLore
             ? "screen.resourcegrabber.lore_on"
             : "screen.resourcegrabber.lore_off");
+    }
+
+    private Component chestShopIdButtonText() {
+        return Component.translatable(this.showChestShopIds
+            ? "screen.resourcegrabber.chestshop_id_on"
+            : "screen.resourcegrabber.chestshop_id_off");
     }
 }
