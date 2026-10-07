@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public final class LearnedItemNames {
     private static final Map<String, Map<String, String>> namesByServer = new HashMap<>();
     private static final Map<String, Map<String, List<String>>> loreByServer = new HashMap<>();
     private static boolean dirty;
+    private static long lastLearnedAtMillis;
 
     public static synchronized void load() {
         namesByServer.clear();
@@ -67,19 +69,19 @@ public final class LearnedItemNames {
         }
     }
 
-    public static synchronized void observe(String serverName, ItemStack stack) {
-        observe(serverName, stack, null);
+    public static synchronized LearningResult observe(String serverName, ItemStack stack) {
+        return observe(serverName, stack, null);
     }
 
-    public static synchronized void observe(
+    public static synchronized LearningResult observe(
         String serverName, ItemStack stack, String fallbackName
     ) {
         if (stack.isEmpty()) {
-            return;
+            return LearningResult.NONE;
         }
         CustomModelDataComponent modelData = stack.get(DataComponentTypes.CUSTOM_MODEL_DATA);
         if (modelData == null || modelData.floats().isEmpty()) {
-            return;
+            return LearningResult.NONE;
         }
 
         Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
@@ -99,12 +101,15 @@ public final class LearnedItemNames {
         Map<String, List<String>> serverLore = loreByServer.computeIfAbsent(
             serverName, ignored -> new HashMap<>());
         List<Float> floats = modelData.floats();
+        int newlyRecognized = 0;
         for (int index = 0; index < floats.size(); index++) {
             float value = floats.get(index);
             if (!CustomItemCatalog.contains(itemId, index, value)) {
                 continue;
             }
             String itemKey = key(itemId, index, value);
+            boolean wasKnown = serverNames.containsKey(itemKey)
+                || serverLore.containsKey(itemKey);
             String previous = displayName.isBlank() ? null
                 : serverNames.put(itemKey, displayName);
             if (!displayName.isBlank() && !displayName.equals(previous)) {
@@ -117,7 +122,16 @@ public final class LearnedItemNames {
                 LOGGER.info("Learned {} lore lines for {} CMD[{}]={}",
                     lore.size(), itemId, index, value);
             }
+            if (!wasKnown && (serverNames.containsKey(itemKey)
+                || serverLore.containsKey(itemKey))) {
+                newlyRecognized++;
+            }
         }
+        if (newlyRecognized > 0) {
+            lastLearnedAtMillis = System.currentTimeMillis();
+        }
+        return newlyRecognized == 0 ? LearningResult.NONE
+            : new LearningResult(newlyRecognized, displayName);
     }
 
     public static synchronized Optional<String> find(
@@ -138,6 +152,24 @@ public final class LearnedItemNames {
             return List.of();
         }
         return serverLore.getOrDefault(key(itemId, floatIndex, threshold), List.of());
+    }
+
+    public static synchronized int knownItemCount(String serverName) {
+        Map<String, String> names = namesByServer.getOrDefault(serverName, Map.of());
+        Map<String, List<String>> lore = loreByServer.getOrDefault(serverName, Map.of());
+        HashSet<String> known = new HashSet<>(names.keySet());
+        known.addAll(lore.keySet());
+        int count = 0;
+        for (CustomItemEntry entry : CustomItemCatalog.snapshot()) {
+            if (known.contains(key(entry.itemId(), entry.floatIndex(), entry.threshold()))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static synchronized boolean learnedRecently() {
+        return System.currentTimeMillis() - lastLearnedAtMillis < 3000L;
     }
 
     public static synchronized void saveIfDirty() {
@@ -194,6 +226,17 @@ public final class LearnedItemNames {
 
     private static int loreCount() {
         return loreByServer.values().stream().mapToInt(Map::size).sum();
+    }
+
+    public record LearningResult(int count, String latestName) {
+        public static final LearningResult NONE = new LearningResult(0, "");
+
+        public LearningResult merge(LearningResult other) {
+            if (other.count == 0) {
+                return this;
+            }
+            return new LearningResult(this.count + other.count, other.latestName);
+        }
     }
 
     private LearnedItemNames() {

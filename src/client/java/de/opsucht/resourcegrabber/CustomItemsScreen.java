@@ -27,6 +27,8 @@ public final class CustomItemsScreen extends Screen {
     private int pageSize;
     private int gridX;
     private int gridY;
+    private int knownItemCount;
+    private int counterRefreshTicks;
 
     public CustomItemsScreen(List<CustomItemEntry> items) {
         super(Text.translatable("screen.resourcegrabber.custom_items"));
@@ -41,6 +43,7 @@ public final class CustomItemsScreen extends Screen {
         this.pageSize = this.columns * this.rows;
         this.gridX = (this.width - this.columns * CELL_SIZE) / 2;
         this.gridY = 52;
+        this.refreshKnownItemCount();
 
         int loreButtonWidth = 92;
         int controlsWidth = Math.min(338, this.width - 24);
@@ -114,6 +117,20 @@ public final class CustomItemsScreen extends Screen {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (++this.counterRefreshTicks >= 20) {
+            this.counterRefreshTicks = 0;
+            this.refreshKnownItemCount();
+        }
+    }
+
+    private void refreshKnownItemCount() {
+        this.knownItemCount = LearnedItemNames.knownItemCount(
+            CustomItemCatalog.sourceServer());
+    }
+
+    @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(this.textRenderer, this.title,
@@ -151,6 +168,13 @@ public final class CustomItemsScreen extends Screen {
             Text.translatable("screen.resourcegrabber.page",
                 this.page + 1, this.pageCount(), this.filteredItems.size()),
             this.width / 2, this.height - 41, 0xC8B49D);
+        if (ResourceGrabberClient.showLearningCounter()) {
+            context.drawCenteredTextWithShadow(this.textRenderer,
+                Text.translatable("screen.resourcegrabber.learned",
+                    this.knownItemCount, this.allItems.size()),
+                this.width / 2, this.height - 52,
+                LearnedItemNames.learnedRecently() ? 0x72E58B : 0xC8B49D);
+        }
         if (hovered != null) {
             context.drawItemTooltip(this.textRenderer, hoveredStack, mouseX, mouseY);
         }

@@ -15,6 +15,8 @@ for their Custom Model Data items.
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
 - Includes an on/off slider for learned lore in item hover tooltips.
+- Shows batched, rate-limited learning feedback in the action bar and a progress
+  counter in the item browser.
 - Generates the matching `/give @s ...` command when an item is clicked.
 - Learns server-assigned item names and lore from custom items seen in
   inventories and containers and remembers them for future sessions.
@@ -61,9 +63,14 @@ The mod creates `config/resourcegrabber.json`:
 ```json
 {
   "enabled": true,
-  "showChatMessage": true
+  "showChatMessage": true,
+  "learningFeedback": "subtle"
 }
 ```
+
+`learningFeedback` accepts `off`, `subtle`, or `detailed`. The subtle and
+detailed modes show at most one batched action-bar message every five seconds;
+`off` also hides the learned-items counter in `/customitems`.
 
 ## Building
 
