@@ -19,6 +19,8 @@ public final class CustomItemsScreen extends Screen {
     private TextFieldWidget searchField;
     private ButtonWidget previousButton;
     private ButtonWidget nextButton;
+    private ButtonWidget loreButton;
+    private boolean showLore = true;
     private int page;
     private int columns;
     private int rows;
@@ -40,8 +42,12 @@ public final class CustomItemsScreen extends Screen {
         this.gridX = (this.width - this.columns * CELL_SIZE) / 2;
         this.gridY = 52;
 
+        int loreButtonWidth = 92;
+        int controlsWidth = Math.min(338, this.width - 24);
+        int searchWidth = Math.max(100, controlsWidth - loreButtonWidth - 6);
+        int controlsX = (this.width - searchWidth - loreButtonWidth - 6) / 2;
         this.searchField = new TextFieldWidget(this.textRenderer,
-            this.width / 2 - 120, 25, 240, 20,
+            controlsX, 25, searchWidth, 20,
             Text.translatable("screen.resourcegrabber.search"));
         this.searchField.setPlaceholder(Text.translatable("screen.resourcegrabber.search"));
         this.searchField.setMaxLength(128);
@@ -50,6 +56,11 @@ public final class CustomItemsScreen extends Screen {
             this.refreshFilter(query);
         });
         this.addDrawableChild(this.searchField);
+        this.loreButton = this.addDrawableChild(ButtonWidget.builder(
+            this.loreButtonText(), button -> {
+                this.showLore = !this.showLore;
+                button.setMessage(this.loreButtonText());
+            }).dimensions(controlsX + searchWidth + 6, 25, loreButtonWidth, 20).build());
 
         int buttonY = this.height - 28;
         this.previousButton = this.addDrawableChild(ButtonWidget.builder(
@@ -121,7 +132,7 @@ public final class CustomItemsScreen extends Screen {
                 isHovered ? 0xCC8A5A35 : 0xAA2A1A12);
             context.fill(x + 1, y + 1, x + CELL_SIZE - 3, y + CELL_SIZE - 3,
                 isHovered ? 0xCC3D271B : 0xAA17100C);
-            ItemStack stack = entry.createStack();
+            ItemStack stack = entry.createStack(this.showLore);
             context.drawItem(stack, x + 8, y + 4);
             String value = entry.formattedThreshold();
             if (value.length() > 5) {
@@ -175,5 +186,11 @@ public final class CustomItemsScreen extends Screen {
     @Override
     public boolean shouldPause() {
         return false;
+    }
+
+    private Text loreButtonText() {
+        return Text.translatable(this.showLore
+            ? "screen.resourcegrabber.lore_on"
+            : "screen.resourcegrabber.lore_off");
     }
 }

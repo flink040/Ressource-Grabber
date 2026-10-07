@@ -21,6 +21,10 @@ public record CustomItemEntry(
     String modelId
 ) {
     public ItemStack createStack() {
+        return this.createStack(true);
+    }
+
+    public ItemStack createStack(boolean includeLore) {
         Identifier id = Identifier.tryParse(this.itemId);
         Item item = id == null
             ? Items.PAPER
@@ -31,7 +35,7 @@ public record CustomItemEntry(
         stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(
             this.displayName() + "  [CMD " + this.formattedThreshold() + "]"));
         List<String> learnedLore = this.lore();
-        if (!learnedLore.isEmpty()) {
+        if (includeLore && !learnedLore.isEmpty()) {
             stack.set(DataComponentTypes.LORE, new LoreComponent(learnedLore.stream()
                 .<Text>map(Text::literal)
                 .toList()));

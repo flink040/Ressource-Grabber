@@ -7,5 +7,7 @@
   "message.resourcegrabber.custom_items_ready": "Resource Grabber: %s Custom-Model-Items gefunden. Öffne sie mit /customitems.",
   "screen.resourcegrabber.custom_items": "Custom Items",
   "screen.resourcegrabber.search": "Name, Modell, Item oder CMD suchen …",
+  "screen.resourcegrabber.lore_on": "Lore: [—●]",
+  "screen.resourcegrabber.lore_off": "Lore: [●—]",
   "screen.resourcegrabber.page": "Seite %s / %s · %s Items · Linksklick gibt das Item"
 }
