@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.CustomModelDataComponent;
+import net.minecraft.component.type.LoreComponent;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -29,6 +30,12 @@ public record CustomItemEntry(
             this.floatValues(), List.of(), List.of(), List.of()));
         stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(
             this.displayName() + "  [CMD " + this.formattedThreshold() + "]"));
+        List<String> learnedLore = this.lore();
+        if (!learnedLore.isEmpty()) {
+            stack.set(DataComponentTypes.LORE, new LoreComponent(learnedLore.stream()
+                .<Text>map(Text::literal)
+                .toList()));
+        }
         return stack;
     }
 
@@ -74,6 +81,11 @@ public record CustomItemEntry(
 
     public String formattedThreshold() {
         return formatFloat(this.threshold);
+    }
+
+    public List<String> lore() {
+        return LearnedItemNames.findLore(CustomItemCatalog.sourceServer(),
+            this.itemId, this.floatIndex, this.threshold);
     }
 
     private List<Float> floatValues() {

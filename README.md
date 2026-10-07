@@ -15,8 +15,10 @@ for their Custom Model Data items.
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
 - Generates the matching `/give @s ...` command when an item is clicked.
-- Learns server-assigned item names from custom items seen in inventories and
-  containers and remembers them for future sessions.
+- Learns server-assigned item names and lore from custom items seen in
+  inventories and containers and remembers them for future sessions.
+- Scans nearby ChestShop item holograms and associates them with the closest
+  valid shop sign without opening the chest. Prices and player names are ignored.
 
 ## Requirements
 
@@ -44,6 +46,12 @@ serverpack-<server-address>-<date>-v<pack-version>-<sha256-prefix>.zip
 Learned item names are stored per server in
 `config/resourcegrabber-item-names.json`. Items that have not yet been seen use
 their model path as a fallback name.
+
+Learned lore is stored per server in `config/resourcegrabber-item-lore.json` and
+is displayed in the `/customitems` tooltip. ChestShop scanning supports item
+displays, dropped-item entities and armor-stand equipment. A shop without an
+item hologram cannot expose its item data to the client until the server sends
+that item through another inventory or display.
 
 ## Configuration
 
