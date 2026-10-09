@@ -54,7 +54,7 @@ public record CustomItemEntry(
     }
 
     public String giveCommand() {
-        return "give @s " + this.itemId
+        return "minecraft:give @s " + this.itemId
             + "[minecraft:custom_model_data={floats:["
             + this.floatValues().stream()
                 .map(CustomItemEntry::formatFloat)
