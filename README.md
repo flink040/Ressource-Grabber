@@ -19,6 +19,8 @@ for their Custom Model Data items.
   counter in the item browser.
 - Generates the matching `/minecraft:give @s ...` command when an item is clicked,
   avoiding server plugins that override `/give` and treat `@s` as a player name.
+  CMD values use explicit float SNBT and the optional count argument is omitted
+  for compatibility with translated server command trees.
 - Learns server-assigned item names and lore from custom items seen in
   inventories and containers and remembers them for future sessions.
 - Scans nearby ChestShop item holograms and associates them with the closest
