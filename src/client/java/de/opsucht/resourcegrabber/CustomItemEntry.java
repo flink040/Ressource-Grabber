@@ -57,10 +57,10 @@ public record CustomItemEntry(
         return "minecraft:give @s " + this.itemId
             + "[minecraft:custom_model_data={floats:["
             + this.floatValues().stream()
-                .map(CustomItemEntry::formatFloat)
+                .map(CustomItemEntry::formatCommandFloat)
                 .reduce((left, right) -> left + "," + right)
-                .orElse("0")
-            + "]}] 1";
+                .orElse("0.0f")
+            + "]}]";
     }
 
     public String displayName() {
@@ -121,5 +121,14 @@ public record CustomItemEntry(
             return "0";
         }
         return new BigDecimal(Float.toString(value)).stripTrailingZeros().toPlainString();
+    }
+
+    private static String formatCommandFloat(float value) {
+        String formatted = formatFloat(value);
+        if (!formatted.contains(".") && !formatted.contains("e")
+            && !formatted.contains("E")) {
+            formatted += ".0";
+        }
+        return formatted + "f";
     }
 }
