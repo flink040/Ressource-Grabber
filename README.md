@@ -17,7 +17,8 @@ for their Custom Model Data items.
 - Includes an on/off slider for learned lore in item hover tooltips.
 - Shows batched, rate-limited learning feedback in the action bar and a progress
   counter in the item browser.
-- Generates the matching `/give @s ...` command when an item is clicked.
+- Generates the matching `/minecraft:give @s ...` command when an item is clicked,
+  avoiding server plugins that override `/give` and treat `@s` as a player name.
 - Learns server-assigned item names and lore from custom items seen in
   inventories and containers and remembers them for future sessions.
 - Scans nearby ChestShop item holograms and associates them with the closest
