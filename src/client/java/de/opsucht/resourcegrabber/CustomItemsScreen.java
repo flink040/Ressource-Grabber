@@ -48,6 +48,18 @@ public final class CustomItemsScreen extends Screen {
         this.gridY = 52;
         this.refreshKnownItemCount();
 
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.resourcegrabber.history_export"),
+            button -> HistoryExchange.exportInteractive())
+            .bounds(8, 4, 72, 18).build());
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.resourcegrabber.history_import"), button -> {
+                if (HistoryExchange.importInteractive()) {
+                    this.refreshKnownItemCount();
+                    this.refreshFilter(this.searchField.getValue());
+                }
+            }).bounds(this.width - 80, 4, 72, 18).build());
+
         int toggleWidth = 90;
         int controlsWidth = Math.min(432, this.width - 24);
         int searchWidth = Math.max(100, controlsWidth - toggleWidth * 2 - 12);

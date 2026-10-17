@@ -470,14 +470,17 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     private static void notifyClient(String translationKey, String argument) {
+        notifyClient(argument == null
+            ? Component.translatable(translationKey)
+            : Component.translatable(translationKey, argument));
+    }
+
+    static void notifyClient(Component message) {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player == null) {
                 return;
             }
-            Component message = argument == null
-                ? Component.translatable(translationKey)
-                : Component.translatable(translationKey, argument);
             client.gui.hud.getChat().addClientSystemMessage(message);
         });
     }
