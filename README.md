@@ -20,10 +20,9 @@ This branch targets Minecraft 26.2. The Minecraft 1.21.11 source remains on the
 - Includes an on/off slider for learned lore in item hover tooltips.
 - Shows batched, rate-limited learning feedback in the action bar and a progress
   counter in the item browser.
-- Generates the matching `/minecraft:give @s ...` command when an item is clicked,
-  avoiding server plugins that override `/give` and treat `@s` as a player name.
-  CMD values use explicit float SNBT and the optional count argument is omitted
-  for compatibility with translated server command trees.
+- Opens the chat with a matching `/give @s ...` command when an item is clicked.
+  The player must review or edit the command and press Enter; Resource Grabber
+  never executes it automatically. CMD values use explicit float SNBT.
 - Learns server-assigned item names and lore from custom items seen in
   inventories and containers and remembers them for future sessions.
 - Scans nearby ChestShop item holograms and associates them with the closest
@@ -51,7 +50,7 @@ The server still decides whether the player is allowed to use `/give`.
 Saved packs use the following filename format:
 
 ```text
-serverpack-<server-address>-<date>-v<pack-version>-<sha256-prefix>.zip
+<server-name> - <date>.zip
 ```
 
 Learned item names are stored per server in

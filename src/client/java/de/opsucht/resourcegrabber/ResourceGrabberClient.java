@@ -177,10 +177,11 @@ public final class ResourceGrabberClient implements ClientModInitializer {
 
         notifyClient("message.resourcegrabber.custom_items_loading", null);
         String serverName = getCurrentServerName();
+        String serverDisplayName = getCurrentServerDisplayName();
         COPY_EXECUTOR.execute(() -> {
             try {
                 Optional<Path> savedPack = findNewestSavedPack(
-                    client.getResourcePackDirectory(), serverName);
+                    client.getResourcePackDirectory(), serverName, serverDisplayName);
                 if (savedPack.isEmpty()) {
                     notifyClient("message.resourcegrabber.custom_items_empty", null);
                     return;
@@ -213,7 +214,18 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         return client.hasSingleplayerServer() ? "singleplayer" : "server";
     }
 
-    public static void capture(Map<UUID, Path> downloadedPacks, String serverName) {
+    public static String getCurrentServerDisplayName() {
+        Minecraft client = Minecraft.getInstance();
+        ServerData server = client.getCurrentServer();
+        if (server != null && server.name != null && !server.name.isBlank()) {
+            return sanitizeFileName(server.name);
+        }
+        return client.hasSingleplayerServer() ? "Singleplayer" : "Server";
+    }
+
+    public static void capture(
+        Map<UUID, Path> downloadedPacks, String serverName, String serverDisplayName
+    ) {
         if (!config.enabled || downloadedPacks.isEmpty()) {
             return;
         }
@@ -223,7 +235,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
             List<CustomItemEntry> customItems = new ArrayList<>();
             snapshot.forEach((id, source) -> {
                 try {
-                    copyPack(source, serverName);
+                    copyPack(source, serverName, serverDisplayName);
                     customItems.addAll(CustomItemCatalog.readPack(source));
                 } catch (IOException | NoSuchAlgorithmException exception) {
                     LOGGER.error("Could not process downloaded resource pack {} from {}",
@@ -240,7 +252,9 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         });
     }
 
-    private static void copyPack(Path source, String serverName)
+    private static void copyPack(
+        Path source, String serverName, String serverDisplayName
+    )
         throws IOException, NoSuchAlgorithmException {
         Optional<String> packVersion = readPackVersion(source);
         if (!Files.isRegularFile(source) || packVersion.isEmpty()) {
@@ -253,18 +267,15 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         Path resourcePackDirectory = Minecraft.getInstance().getResourcePackDirectory();
         Files.createDirectories(resourcePackDirectory);
 
-        Optional<Path> existingCopy = findExistingCopy(
-            resourcePackDirectory, safeServerName, contentHash);
+        Optional<Path> existingCopy = findExistingCopy(resourcePackDirectory,
+            safeServerName, serverDisplayName, contentHash);
         if (existingCopy.isPresent()) {
             LOGGER.debug("This resource pack version is already saved as {}", existingCopy.get());
             return;
         }
 
         String captureDate = LocalDate.now().format(FILE_DATE_FORMAT);
-        String fileStem = "serverpack-" + safeServerName
-            + "-" + captureDate
-            + "-v" + packVersion.get()
-            + "-" + contentHash.substring(0, 12);
+        String fileStem = sanitizeFileName(serverDisplayName) + " - " + captureDate;
         Path target = findAvailableTarget(resourcePackDirectory, fileStem);
         String fileName = target.getFileName().toString();
 
@@ -364,15 +375,17 @@ public final class ResourceGrabberClient implements ClientModInitializer {
     }
 
     private static Optional<Path> findExistingCopy(
-        Path directory, String serverName, String expectedHash
+        Path directory, String serverName, String serverDisplayName, String expectedHash
     ) throws IOException, NoSuchAlgorithmException {
-        String prefix = "serverpack-" + serverName + "-";
+        String legacyPrefix = "serverpack-" + serverName + "-";
+        String currentPrefix = sanitizeFileName(serverDisplayName) + " - ";
         try (Stream<Path> paths = Files.list(directory)) {
             for (Path candidate : paths
                 .filter(Files::isRegularFile)
                 .filter(path -> {
                     String name = path.getFileName().toString();
-                    return name.startsWith(prefix) && name.endsWith(".zip");
+                    return (name.startsWith(legacyPrefix) || name.startsWith(currentPrefix))
+                        && name.endsWith(".zip");
                 })
                 .toList()) {
                 try {
@@ -387,25 +400,30 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         return Optional.empty();
     }
 
-    private static Optional<Path> findNewestSavedPack(Path directory, String serverName)
+    private static Optional<Path> findNewestSavedPack(
+        Path directory, String serverName, String serverDisplayName
+    )
         throws IOException {
         if (!Files.isDirectory(directory)) {
             return Optional.empty();
         }
 
         String currentServerPrefix = "serverpack-" + sanitize(serverName) + "-";
+        String currentDisplayPrefix = sanitizeFileName(serverDisplayName) + " - ";
         try (Stream<Path> paths = Files.list(directory)) {
             List<Path> packs = paths
                 .filter(Files::isRegularFile)
-                .filter(path -> {
-                    String name = path.getFileName().toString();
-                    return name.startsWith("serverpack-") && name.endsWith(".zip");
-                })
+                .filter(path -> path.getFileName().toString().endsWith(".zip"))
                 .toList();
 
             Optional<Path> currentServerPack = newestPack(packs.stream()
-                .filter(path -> path.getFileName().toString().startsWith(currentServerPrefix)));
-            return currentServerPack.isPresent() ? currentServerPack : newestPack(packs.stream());
+                .filter(path -> {
+                    String name = path.getFileName().toString();
+                    return name.startsWith(currentServerPrefix)
+                        || name.startsWith(currentDisplayPrefix);
+                }));
+            return currentServerPack.isPresent() ? currentServerPack : newestPack(packs.stream()
+                .filter(path -> path.getFileName().toString().startsWith("serverpack-")));
         }
     }
 
@@ -425,7 +443,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         Path candidate = directory.resolve(fileStem + ".zip");
         int suffix = 2;
         while (Files.exists(candidate)) {
-            candidate = directory.resolve(fileStem + "-" + suffix + ".zip");
+            candidate = directory.resolve(fileStem + " (" + suffix + ").zip");
             suffix++;
         }
         return candidate;
@@ -503,6 +521,17 @@ public final class ResourceGrabberClient implements ClientModInitializer {
             return "unknown";
         }
         return sanitized.substring(0, Math.min(sanitized.length(), 32));
+    }
+
+    private static String sanitizeFileName(String value) {
+        String sanitized = value
+            .replaceAll("[\\x00-\\x1f<>:\"/\\\\|?*]+", "-")
+            .replaceAll("[ .]+$", "")
+            .strip();
+        if (sanitized.isBlank()) {
+            return "Server";
+        }
+        return sanitized.substring(0, Math.min(sanitized.length(), 64));
     }
 
     private static final class Config {

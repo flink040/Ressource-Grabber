@@ -19,7 +19,8 @@ abstract class DownloaderMixin {
         CallbackInfoReturnable<CompletableFuture<DownloadQueue.BatchResult>> callback
     ) {
         String serverName = ResourceGrabberClient.getCurrentServerName();
+        String serverDisplayName = ResourceGrabberClient.getCurrentServerDisplayName();
         callback.getReturnValue().thenAccept(result ->
-            ResourceGrabberClient.capture(result.downloaded(), serverName));
+            ResourceGrabberClient.capture(result.downloaded(), serverName, serverDisplayName));
     }
 }

@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -211,7 +212,7 @@ public final class CustomItemsScreen extends Screen {
         CustomItemEntry entry = this.filteredItems.get(index);
         Minecraft client = Minecraft.getInstance();
         if (client.getConnection() != null) {
-            client.getConnection().sendCommand(entry.giveCommand());
+            client.gui.setScreen(new ChatScreen("/" + entry.giveCommand(), false));
             return true;
         }
         return false;
