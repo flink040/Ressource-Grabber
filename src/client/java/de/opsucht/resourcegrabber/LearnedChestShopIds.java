@@ -144,6 +144,57 @@ public final class LearnedChestShopIds {
         }
     }
 
+    public static synchronized Map<String, Map<String, List<String>>> exportServer(
+        String serverName
+    ) {
+        Map<String, Map<String, List<String>>> result = new TreeMap<>();
+        idsByServer.getOrDefault(serverName, Map.of()).forEach((scope, items) -> {
+            Map<String, List<String>> itemCopy = new TreeMap<>();
+            items.forEach((key, ids) -> itemCopy.put(key, List.copyOf(ids)));
+            result.put(scope, Map.copyOf(itemCopy));
+        });
+        return Map.copyOf(result);
+    }
+
+    public static synchronized int importServer(
+        String serverName, Map<String, Map<String, List<String>>> imported
+    ) {
+        if (imported == null) {
+            return 0;
+        }
+        Map<String, Map<String, List<String>>> serverIds = idsByServer.computeIfAbsent(
+            serverName, ignored -> new TreeMap<>());
+        int count = 0;
+        for (Map.Entry<String, Map<String, List<String>>> scopeEntry : imported.entrySet()) {
+            String scope = scopeEntry.getKey();
+            if (scope == null || scope.isBlank() || scope.length() > 256
+                || scopeEntry.getValue() == null) {
+                continue;
+            }
+            Map<String, List<String>> worldIds = serverIds.computeIfAbsent(
+                scope, ignored -> new TreeMap<>());
+            for (Map.Entry<String, List<String>> itemEntry : scopeEntry.getValue().entrySet()) {
+                if (itemEntry.getKey() == null || itemEntry.getKey().length() > 256
+                    || itemEntry.getValue() == null) {
+                    continue;
+                }
+                List<String> ids = worldIds.computeIfAbsent(
+                    itemEntry.getKey(), ignored -> new ArrayList<>());
+                for (String id : itemEntry.getValue()) {
+                    if (id != null && !id.isBlank() && id.length() <= 1024
+                        && !ids.contains(id)) {
+                        ids.add(id);
+                        count++;
+                    }
+                }
+            }
+        }
+        if (count > 0) {
+            dirty = true;
+        }
+        return count;
+    }
+
     private static String key(String itemId, int floatIndex, float value) {
         return itemId + '|' + floatIndex + '|'
             + Integer.toHexString(Float.floatToIntBits(value));

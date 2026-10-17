@@ -172,6 +172,58 @@ public final class LearnedItemNames {
         return System.currentTimeMillis() - lastLearnedAtMillis < 3000L;
     }
 
+    public static synchronized Map<String, String> exportNames(String serverName) {
+        return Map.copyOf(namesByServer.getOrDefault(serverName, Map.of()));
+    }
+
+    public static synchronized Map<String, List<String>> exportLore(String serverName) {
+        Map<String, List<String>> result = new HashMap<>();
+        loreByServer.getOrDefault(serverName, Map.of())
+            .forEach((key, lines) -> result.put(key, List.copyOf(lines)));
+        return Map.copyOf(result);
+    }
+
+    public static synchronized ImportCounts importHistory(
+        String serverName, Map<String, String> names, Map<String, List<String>> lore
+    ) {
+        Map<String, String> serverNames = namesByServer.computeIfAbsent(
+            serverName, ignored -> new HashMap<>());
+        Map<String, List<String>> serverLore = loreByServer.computeIfAbsent(
+            serverName, ignored -> new HashMap<>());
+        int importedNames = 0;
+        int importedLore = 0;
+        if (names != null) {
+            for (Map.Entry<String, String> entry : names.entrySet()) {
+                if (validKey(entry.getKey()) && entry.getValue() != null
+                    && !entry.getValue().isBlank()
+                    && serverNames.putIfAbsent(entry.getKey(), entry.getValue().strip()) == null) {
+                    importedNames++;
+                }
+            }
+        }
+        if (lore != null) {
+            for (Map.Entry<String, List<String>> entry : lore.entrySet()) {
+                if (!validKey(entry.getKey()) || entry.getValue() == null
+                    || entry.getValue().size() > 256 || serverLore.containsKey(entry.getKey())) {
+                    continue;
+                }
+                List<String> lines = entry.getValue().stream()
+                    .filter(java.util.Objects::nonNull)
+                    .map(line -> line.substring(0, Math.min(line.length(), 1024)))
+                    .toList();
+                if (!lines.isEmpty()) {
+                    serverLore.put(entry.getKey(), lines);
+                    importedLore++;
+                }
+            }
+        }
+        if (importedNames > 0 || importedLore > 0) {
+            dirty = true;
+            lastLearnedAtMillis = System.currentTimeMillis();
+        }
+        return new ImportCounts(importedNames, importedLore);
+    }
+
     public static synchronized void saveIfDirty() {
         if (!dirty) {
             return;
@@ -208,6 +260,11 @@ public final class LearnedItemNames {
         return itemId + '|' + floatIndex + '|' + Integer.toHexString(Float.floatToIntBits(value));
     }
 
+    private static boolean validKey(String value) {
+        return value != null && value.length() <= 256
+            && value.chars().filter(character -> character == '|').count() == 2;
+    }
+
     private static List<String> readLore(ItemStack stack) {
         var lore = stack.get(DataComponentTypes.LORE);
         if (lore == null || lore.lines().isEmpty()) {
@@ -237,6 +294,9 @@ public final class LearnedItemNames {
             }
             return new LearningResult(this.count + other.count, other.latestName);
         }
+    }
+
+    public record ImportCounts(int names, int lore) {
     }
 
     private LearnedItemNames() {

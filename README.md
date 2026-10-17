@@ -9,11 +9,12 @@ for their Custom Model Data items.
 - Copies downloaded server packs into the active Minecraft instance's
   `resourcepacks` directory.
 - Compares complete SHA-256 hashes so identical packs are not saved twice.
-- Keeps changed packs as dated versions and includes the pack format/version in
-  the filename.
+- Keeps changed packs as dated versions named `<server-name> - <date>.zip`.
 - Supports modern `assets/<namespace>/items/*.json` range dispatches and legacy
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
+- Exports and imports learned names, lore, and world-specific ChestShop IDs so
+  players can share their collected history.
 - Includes an on/off slider for learned lore in item hover tooltips.
 - Shows batched, rate-limited learning feedback in the action bar and a progress
   counter in the item browser.
@@ -40,7 +41,7 @@ for their Custom Model Data items.
 2. Join a server and accept its resource pack.
 3. Wait for Resource Grabber to report the detected custom items.
 4. Run `/customitems` to browse and search the models.
-5. Left-click an entry to send its `/give` command.
+5. Left-click an entry to prepare its `/give` command in chat.
 
 The server still decides whether the player is allowed to use `/give`.
 
@@ -64,6 +65,14 @@ ChestShop IDs are stored in `config/resourcegrabber-chestshop-ids.json`, grouped
 by server, detected scoreboard/dimension context, base item and CMD value. If a
 server exposes multiple worlds with the same client-visible context, all unique
 IDs are retained and displayed instead of overwriting each other.
+
+### Sharing learned history
+
+Use **Export** in `/customitems` to create a versioned JSON history file for the
+current server. Another player can use **Import** while connected to that server
+to merge the collected item names, lore, and world-specific ChestShop IDs into
+their own history. Existing local names and lore are kept; new ChestShop IDs are
+added without duplicates.
 
 ## Configuration
 
