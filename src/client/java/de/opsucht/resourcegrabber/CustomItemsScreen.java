@@ -5,6 +5,7 @@ import java.util.Locale;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -212,7 +213,7 @@ public final class CustomItemsScreen extends Screen {
         CustomItemEntry entry = this.filteredItems.get(index);
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.getNetworkHandler() != null) {
-            client.getNetworkHandler().sendChatCommand(entry.giveCommand());
+            client.setScreen(new ChatScreen("/" + entry.giveCommand(), false));
             return true;
         }
         return false;
