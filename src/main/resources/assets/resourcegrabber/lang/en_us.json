@@ -12,6 +12,9 @@
   "message.resourcegrabber.history_export_failed": "Resource Grabber: the history could not be exported. See the log for details.",
   "message.resourcegrabber.history_import_failed": "Resource Grabber: the history could not be imported. See the log for details.",
   "message.resourcegrabber.history_incompatible": "Resource Grabber: this is not a compatible history file.",
+  "message.resourcegrabber.placement_singleplayer": "Resource Grabber: models can only be placed directly in singleplayer.",
+  "message.resourcegrabber.placement_ready": "Right-click a block to place %s.",
+  "message.resourcegrabber.placement_failed": "Resource Grabber: the model could not be placed.",
   "dialog.resourcegrabber.history_export": "Export Resource Grabber history",
   "dialog.resourcegrabber.history_import": "Import Resource Grabber history",
   "screen.resourcegrabber.custom_items": "Custom Items",
@@ -23,5 +26,8 @@
   "screen.resourcegrabber.chestshop_id_on": "Shop ID [—●]",
   "screen.resourcegrabber.chestshop_id_off": "Shop ID [●—]",
   "screen.resourcegrabber.learned": "Recognized: %s / %s",
-  "screen.resourcegrabber.page": "Page %s / %s · %s items · Left-click to give"
+  "screen.resourcegrabber.page": "Page %s / %s · %s items · Left-click: give · Right-click: place",
+  "screen.resourcegrabber.model_editor": "Edit placed model",
+  "screen.resourcegrabber.model_remove": "Remove",
+  "screen.resourcegrabber.model_editor_hint": "Position ±0.1 · rotation ±15° · scale ±0.1"
 }

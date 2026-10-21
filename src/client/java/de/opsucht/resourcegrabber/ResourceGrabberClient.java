@@ -71,6 +71,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         config = loadConfig();
         LearnedItemNames.load();
         LearnedChestShopIds.load();
+        PlacementController.register();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(ClientCommands.literal("customitems").executes(context -> {
                 requestCustomItemsMenu();
