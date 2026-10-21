@@ -12,6 +12,9 @@
   "message.resourcegrabber.history_export_failed": "Resource Grabber: Die History konnte nicht exportiert werden. Details stehen im Log.",
   "message.resourcegrabber.history_import_failed": "Resource Grabber: Die History konnte nicht importiert werden. Details stehen im Log.",
   "message.resourcegrabber.history_incompatible": "Resource Grabber: Diese Datei ist keine kompatible History-Datei.",
+  "message.resourcegrabber.placement_singleplayer": "Resource Grabber: Modelle können nur im Singleplayer direkt platziert werden.",
+  "message.resourcegrabber.placement_ready": "Rechtsklick auf einen Block, um %s zu platzieren.",
+  "message.resourcegrabber.placement_failed": "Resource Grabber: Das Modell konnte nicht platziert werden.",
   "dialog.resourcegrabber.history_export": "Resource-Grabber-History exportieren",
   "dialog.resourcegrabber.history_import": "Resource-Grabber-History importieren",
   "screen.resourcegrabber.custom_items": "Custom Items",
@@ -23,5 +26,8 @@
   "screen.resourcegrabber.chestshop_id_on": "Shop-ID [—●]",
   "screen.resourcegrabber.chestshop_id_off": "Shop-ID [●—]",
   "screen.resourcegrabber.learned": "Erkannt: %s / %s",
-  "screen.resourcegrabber.page": "Seite %s / %s · %s Items · Linksklick gibt das Item"
+  "screen.resourcegrabber.page": "Seite %s / %s · %s Items · Linksklick: Give · Rechtsklick: Platzieren",
+  "screen.resourcegrabber.model_editor": "Platziertes Modell bearbeiten",
+  "screen.resourcegrabber.model_remove": "Entfernen",
+  "screen.resourcegrabber.model_editor_hint": "Position ±0,1 · Drehung ±15° · Größe ±0,1"
 }

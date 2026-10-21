@@ -209,7 +209,7 @@ public final class CustomItemsScreen extends Screen {
         if (super.mouseClicked(click, doubled)) {
             return true;
         }
-        if (click.button() != 0) {
+        if (click.button() != 0 && click.button() != 1) {
             return false;
         }
         int column = ((int)click.x() - this.gridX) / CELL_SIZE;
@@ -223,6 +223,9 @@ public final class CustomItemsScreen extends Screen {
             return false;
         }
         CustomItemEntry entry = this.filteredItems.get(index);
+        if (click.button() == 1) {
+            return PlacementController.begin(entry);
+        }
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.getNetworkHandler() != null) {
             client.setScreen(new ChatScreen("/" + entry.giveCommand(), false));

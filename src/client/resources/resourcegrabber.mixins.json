@@ -3,7 +3,9 @@
   "package": "de.opsucht.resourcegrabber.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "DownloaderMixin"
+    "DownloaderMixin",
+    "DisplayEntityAccessor",
+    "ItemDisplayEntityAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

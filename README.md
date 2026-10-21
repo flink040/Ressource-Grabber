@@ -13,6 +13,10 @@ for their Custom Model Data items.
 - Supports modern `assets/<namespace>/items/*.json` range dispatches and legacy
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
+- Places any listed model as a persistent `item_display` in singleplayer by
+  right-clicking it, then right-clicking a block in the world.
+- Opens a compact placement editor for precise position, rotation, scale, and
+  removal controls. Placement works without cheats or `/summon` commands.
 - Exports and imports learned names, lore, and world-specific ChestShop IDs so
   players can share their collected history.
 - Includes an on/off slider for learned lore in item hover tooltips.
@@ -42,6 +46,8 @@ for their Custom Model Data items.
 3. Wait for Resource Grabber to report the detected custom items.
 4. Run `/customitems` to browse and search the models.
 5. Left-click an entry to prepare its `/give` command in chat.
+6. In singleplayer, right-click an entry and then right-click a block to place
+   it. Use the editor that opens to adjust its position, rotation, and scale.
 
 The server still decides whether the player is allowed to use `/give`.
 
