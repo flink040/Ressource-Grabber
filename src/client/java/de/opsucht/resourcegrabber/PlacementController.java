@@ -122,6 +122,12 @@ final class PlacementController {
             cancel();
             return;
         }
+        if (client.isPaused()) {
+            cancel();
+            client.gui.hud.setOverlayMessage(Component.translatable(
+                "message.resourcegrabber.placement_cancelled"), false);
+            return;
+        }
         if (!(client.hitResult instanceof BlockHitResult hit)) {
             return;
         }
