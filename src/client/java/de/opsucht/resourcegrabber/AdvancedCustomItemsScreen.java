@@ -34,6 +34,8 @@ public final class AdvancedCustomItemsScreen extends Screen {
     private boolean showIds = true;
     private boolean favoritesOnly;
     private boolean detailsVisible;
+    private boolean layoutInitialized;
+    private String searchQuery = "";
     private Category category = Category.ALL;
     private int page;
     private int columns;
@@ -55,7 +57,10 @@ public final class AdvancedCustomItemsScreen extends Screen {
 
     @Override
     protected void init() {
-        this.detailsVisible = this.detailsVisible || this.width >= 620;
+        if (!this.layoutInitialized) {
+            this.detailsVisible = this.width >= 620;
+            this.layoutInitialized = true;
+        }
         this.layoutGrid();
         this.refreshKnownItemCount();
 
@@ -76,7 +81,9 @@ public final class AdvancedCustomItemsScreen extends Screen {
             8, 26, searchWidth, 18, Text.translatable("screen.resourcegrabber.search"));
         this.searchField.setPlaceholder(Text.translatable("screen.resourcegrabber.search"));
         this.searchField.setMaxLength(128);
+        this.searchField.setText(this.searchQuery);
         this.searchField.setChangedListener(query -> {
+            this.searchQuery = query;
             this.page = 0;
             this.refreshFilter();
         });
@@ -170,8 +177,9 @@ public final class AdvancedCustomItemsScreen extends Screen {
 
     private void layoutGrid() {
         int detailWidth = this.detailsVisible ? Math.min(196, Math.max(160, this.width / 3)) : 0;
-        this.contentRight = this.width - detailWidth;
-        this.detailX = this.contentRight + 4;
+        boolean overlayDetails = this.detailsVisible && this.width < 500;
+        this.contentRight = overlayDetails ? this.width : this.width - detailWidth;
+        this.detailX = overlayDetails ? this.width - detailWidth - 4 : this.contentRight + 4;
         int availableWidth = Math.max(CELL_SIZE * 3, this.contentRight - 16);
         this.columns = Math.max(3, Math.min(14, availableWidth / CELL_SIZE));
         this.rows = Math.max(1, (this.height - 124) / CELL_SIZE);
@@ -181,8 +189,7 @@ public final class AdvancedCustomItemsScreen extends Screen {
     }
 
     private void refreshFilter() {
-        String query = this.searchField == null ? ""
-            : this.searchField.getText().strip().toLowerCase(Locale.ROOT);
+        String query = this.searchQuery.strip().toLowerCase(Locale.ROOT);
         this.filteredItems = this.allItems.stream()
             .filter(entry -> this.category.matches(entry))
             .filter(entry -> !this.favoritesOnly || FavoriteItems.contains(entry))
