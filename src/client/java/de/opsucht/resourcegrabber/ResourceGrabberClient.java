@@ -71,6 +71,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         config = loadConfig();
         LearnedItemNames.load();
         LearnedChestShopIds.load();
+        FavoriteItems.load();
         PlacementController.register();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(ClientCommandManager.literal("customitems").executes(context -> {
@@ -94,6 +95,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             LearnedItemNames.saveIfDirty();
             LearnedChestShopIds.saveIfDirty();
+            FavoriteItems.saveIfDirty();
             COPY_EXECUTOR.shutdown();
         });
         LOGGER.info("Resource Grabber initialized (enabled: {})", config.enabled);
@@ -172,7 +174,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         MinecraftClient client = MinecraftClient.getInstance();
         List<CustomItemEntry> items = CustomItemCatalog.snapshot();
         if (!items.isEmpty()) {
-            client.setScreen(new CustomItemsScreen(items));
+            client.setScreen(new AdvancedCustomItemsScreen(items));
             return;
         }
 
@@ -198,7 +200,8 @@ public final class ResourceGrabberClient implements ClientModInitializer {
 
                 LOGGER.info("Loaded {} custom-model items from {}",
                     loadedSnapshot.size(), savedPack.get());
-                client.execute(() -> client.setScreen(new CustomItemsScreen(loadedSnapshot)));
+                client.execute(() -> client.setScreen(
+                    new AdvancedCustomItemsScreen(loadedSnapshot)));
             } catch (IOException | RuntimeException exception) {
                 LOGGER.error("Could not load custom-model items from a saved resource pack", exception);
                 notifyClient("message.resourcegrabber.custom_items_load_failed", null);

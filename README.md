@@ -13,10 +13,16 @@ for their Custom Model Data items.
 - Supports modern `assets/<namespace>/items/*.json` range dispatches and legacy
   `models/item` overrides.
 - Opens a searchable, paginated item browser with `/customitems`.
+- Provides selectable item cards, visible Give/Place/Wear/Details actions,
+  persistent favorites, category filters, status badges, and a responsive detail
+  panel for item IDs, model paths, CMD values, lore, and ChestShop data.
 - Places any listed model as a persistent `item_display` in singleplayer by
   right-clicking it, then right-clicking a block in the world.
 - Opens a compact placement editor for precise position, rotation, scale, and
   removal controls. Placement works without cheats or `/summon` commands.
+- Shows a live placement preview and includes numeric editing, independent X/Y/Z
+  rotation, adjustable step sizes, undo, reset, duplicate, face-player, and
+  block-center tools.
 - Exports and imports learned names, lore, and world-specific ChestShop IDs so
   players can share their collected history.
 - Includes an on/off slider for learned lore in item hover tooltips.
@@ -48,6 +54,10 @@ for their Custom Model Data items.
 5. Left-click an entry to prepare its `/give` command in chat.
 6. In singleplayer, right-click an entry and then right-click a block to place
    it. Use the editor that opens to adjust its position, rotation, and scale.
+
+Single-click an item card to select it, double-click it to prepare `/give`, or
+use the visible action buttons. Favorites are stored in
+`config/resourcegrabber-favorites.json`.
 
 The server still decides whether the player is allowed to use `/give`.
 
