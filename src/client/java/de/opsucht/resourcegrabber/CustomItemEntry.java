@@ -63,6 +63,16 @@ public record CustomItemEntry(
             + "]}]";
     }
 
+    public String stableKey() {
+        return this.itemId + '|' + this.floatIndex + '|'
+            + Integer.toHexString(Float.floatToIntBits(this.threshold)) + '|' + this.modelId;
+    }
+
+    public boolean hasLearnedName() {
+        return LearnedItemNames.find(CustomItemCatalog.sourceServer(),
+            this.itemId, this.floatIndex, this.threshold).isPresent();
+    }
+
     public String displayName() {
         String learnedName = LearnedItemNames.find(CustomItemCatalog.sourceServer(),
             this.itemId, this.floatIndex, this.threshold).orElse(null);
