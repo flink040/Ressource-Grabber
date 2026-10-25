@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 final class AdvancedModelEditorScreen extends Screen {
     private static final double[] POSITION_STEPS = {0.01D, 0.1D, 0.5D, 1.0D};
@@ -18,7 +19,8 @@ final class AdvancedModelEditorScreen extends Screen {
     private static final float[] SCALE_STEPS = {0.01F, 0.1F, 0.5F, 1.0F};
 
     private final UUID entityId;
-    private final CustomItemEntry entry;
+    private final String displayName;
+    private final ItemStack itemStack;
     private final PlacementController.PlacementState initialState;
     private final Deque<PlacementController.PlacementState> undo = new ArrayDeque<>();
     private final EditBox[] fields = new EditBox[7];
@@ -36,9 +38,19 @@ final class AdvancedModelEditorScreen extends Screen {
     AdvancedModelEditorScreen(
         UUID entityId, CustomItemEntry entry, PlacementController.PlacementState state
     ) {
+        this(entityId, entry.displayName(), entry.createStack(false, false), state);
+    }
+
+    AdvancedModelEditorScreen(
+        UUID entityId,
+        String displayName,
+        ItemStack itemStack,
+        PlacementController.PlacementState state
+    ) {
         super(Component.translatable("screen.resourcegrabber.model_editor"));
         this.entityId = entityId;
-        this.entry = entry;
+        this.displayName = displayName;
+        this.itemStack = itemStack.copy();
         this.state = state;
         this.initialState = state;
     }
@@ -88,7 +100,7 @@ final class AdvancedModelEditorScreen extends Screen {
         this.addSmallAction(Component.translatable("screen.resourcegrabber.reset"), 1, actionY,
             () -> this.apply(this.initialState, true, true));
         this.addSmallAction(Component.translatable("screen.resourcegrabber.duplicate"), 2, actionY,
-            () -> PlacementController.duplicate(this.entry, this.state));
+            () -> PlacementController.duplicate(this.itemStack, this.state));
 
         int alignY = this.height - 44;
         int half = (this.panelWidth - 16) / 2;
@@ -230,7 +242,7 @@ final class AdvancedModelEditorScreen extends Screen {
         context.fill(this.panelX - 4, 4, this.width - 4, this.height - 4, 0xC018120E);
         context.centeredText(this.font, this.title,
             this.panelX + this.panelWidth / 2, 8, 0xFFFFFF);
-        String name = this.font.plainSubstrByWidth(this.entry.displayName(),
+        String name = this.font.plainSubstrByWidth(this.displayName,
             this.panelWidth - 20);
         context.centeredText(this.font, Component.literal(name),
             this.panelX + this.panelWidth / 2, 20, 0xD8C6B2);

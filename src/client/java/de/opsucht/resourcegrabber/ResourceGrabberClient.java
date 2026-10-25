@@ -74,12 +74,20 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         FavoriteItems.load();
         PlacementController.register();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-            dispatcher.register(ClientCommands.literal("customitems").executes(context -> {
-                requestCustomItemsMenu();
-                return 1;
-            })));
+            dispatcher.register(ClientCommands.literal("customitems")
+                .executes(context -> {
+                    requestCustomItemsMenu();
+                    return 1;
+                })
+                .then(ClientCommands.literal("edit").executes(context ->
+                    PlacementController.beginEditMode() ? 1 : 0))));
         ClientSendMessageEvents.ALLOW_COMMAND.register(command -> {
-            if (!command.strip().equalsIgnoreCase("customitems")) {
+            String normalized = command.strip();
+            if (normalized.equalsIgnoreCase("customitems edit")) {
+                PlacementController.beginEditMode();
+                return false;
+            }
+            if (!normalized.equalsIgnoreCase("customitems")) {
                 return true;
             }
             requestCustomItemsMenu();

@@ -5,6 +5,7 @@ import de.opsucht.resourcegrabber.mixin.ItemDisplayEntityAccessor;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import com.mojang.math.Transformation;
 import net.minecraft.client.Minecraft;
@@ -24,8 +25,10 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
+import org.joml.Vector3fc;
 import org.joml.Vector3f;
 
 final class PlacementController {
@@ -33,10 +36,32 @@ final class PlacementController {
     private static UUID previewEntityId;
     private static PlacementState previewState;
     private static boolean commitRequested;
+    private static boolean editMode;
+    private static UUID editTargetId;
+    private static UUID announcedEditTargetId;
 
     static void register() {
         UseBlockCallback.EVENT.register(PlacementController::useBlock);
+        UseEntityCallback.EVENT.register(PlacementController::useEntity);
         ClientTickEvents.END_CLIENT_TICK.register(PlacementController::tickPreview);
+    }
+
+    static boolean beginEditMode() {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.hasSingleplayerServer() || client.getSingleplayerServer() == null
+            || client.player == null || client.level == null) {
+            ResourceGrabberClient.notifyClient(Component.translatable(
+                "message.resourcegrabber.placement_singleplayer"));
+            return false;
+        }
+        cancel();
+        editMode = true;
+        editTargetId = null;
+        announcedEditTargetId = null;
+        client.gui.setScreen(null);
+        client.gui.hud.setOverlayMessage(Component.translatable(
+            "message.resourcegrabber.edit_mode"), false);
+        return true;
     }
 
     static boolean begin(CustomItemEntry entry) {
@@ -90,7 +115,11 @@ final class PlacementController {
     }
 
     static void duplicate(CustomItemEntry entry, PlacementState state) {
-        spawnDisplay(entry, state.offset(0.25D, 0.0D, 0.25D), false, entityId ->
+        duplicate(entry.createStack(false, false), state);
+    }
+
+    static void duplicate(ItemStack stack, PlacementState state) {
+        spawnDisplay(stack, state.offset(0.25D, 0.0D, 0.25D), false, entityId ->
             ResourceGrabberClient.notifyClient(Component.translatable(
                 "message.resourcegrabber.model_duplicated")));
     }
@@ -114,6 +143,10 @@ final class PlacementController {
     }
 
     private static void tickPreview(Minecraft client) {
+        if (editMode) {
+            tickEditTarget(client);
+            return;
+        }
         if (pendingEntry == null) {
             return;
         }
@@ -146,6 +179,9 @@ final class PlacementController {
         InteractionHand hand,
         BlockHitResult hit
     ) {
+        if (world.isClientSide() && hand == InteractionHand.MAIN_HAND && editMode) {
+            return selectEditTarget() ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+        }
         if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND || pendingEntry == null) {
             return InteractionResult.PASS;
         }
@@ -156,6 +192,92 @@ final class PlacementController {
             finishCommit();
         }
         return InteractionResult.SUCCESS;
+    }
+
+    private static InteractionResult useEntity(
+        Player player,
+        Level world,
+        InteractionHand hand,
+        Entity entity,
+        EntityHitResult hit
+    ) {
+        if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND || !editMode
+            || !(entity instanceof Display.ItemDisplay)) {
+            return InteractionResult.PASS;
+        }
+        editTargetId = entity.getUUID();
+        return selectEditTarget() ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+    }
+
+    private static void tickEditTarget(Minecraft client) {
+        if (client.player == null || client.level == null
+            || client.getSingleplayerServer() == null || client.isPaused()) {
+            editMode = false;
+            editTargetId = null;
+            return;
+        }
+        Vec3 eye = client.player.getEyePosition();
+        Vec3 look = client.player.getViewVector(1.0F).normalize();
+        double bestDistance = 8.0D;
+        UUID bestId = null;
+        for (Display.ItemDisplay display : client.level.getEntitiesOfClass(
+            Display.ItemDisplay.class, client.player.getBoundingBox().inflate(8.0D))) {
+            Vec3 delta = display.position().subtract(eye);
+            double distance = delta.dot(look);
+            if (distance < 0.0D || distance > bestDistance) {
+                continue;
+            }
+            double perpendicularSquared = delta.lengthSqr() - distance * distance;
+            if (perpendicularSquared <= 0.64D) {
+                bestDistance = distance;
+                bestId = display.getUUID();
+            }
+        }
+        editTargetId = bestId;
+        if (bestId != null && !bestId.equals(announcedEditTargetId)) {
+            announcedEditTargetId = bestId;
+            client.gui.hud.setOverlayMessage(Component.translatable(
+                "message.resourcegrabber.edit_target"), false);
+        }
+    }
+
+    private static boolean selectEditTarget() {
+        Minecraft client = Minecraft.getInstance();
+        if (editTargetId == null || client.level == null) {
+            client.gui.hud.setOverlayMessage(Component.translatable(
+                "message.resourcegrabber.edit_no_target"), false);
+            return false;
+        }
+        Entity entity = client.level.getEntity(editTargetId);
+        if (!(entity instanceof Display.ItemDisplay display)) {
+            return false;
+        }
+        ItemStack stack = ((ItemDisplayEntityAccessor)display)
+            .resourcegrabber$getItemStack().copy();
+        PlacementState state = readState(display);
+        String name = stack.isEmpty()
+            ? Component.translatable("screen.resourcegrabber.model_editor").getString()
+            : stack.getHoverName().getString();
+        UUID entityId = display.getUUID();
+        editMode = false;
+        editTargetId = null;
+        announcedEditTargetId = null;
+        client.execute(() -> client.gui.setScreen(
+            new AdvancedModelEditorScreen(entityId, name, stack, state)));
+        return true;
+    }
+
+    private static PlacementState readState(Display.ItemDisplay display) {
+        Transformation transformation = DisplayEntityAccessor.resourcegrabber$getTransformation(
+            display.getEntityData());
+        Vector3fc scaleVector = transformation.scale();
+        float scale = (scaleVector.x() + scaleVector.y() + scaleVector.z()) / 3.0F;
+        Vector3f rotation = new Quaternionf(transformation.leftRotation())
+            .getEulerAnglesXYZ(new Vector3f());
+        return new PlacementState(display.getX(), display.getY(), display.getZ(),
+            (float)Math.toDegrees(rotation.x),
+            (float)-Math.toDegrees(rotation.y),
+            (float)Math.toDegrees(rotation.z), scale);
     }
 
     private static void finishCommit() {
@@ -193,13 +315,22 @@ final class PlacementController {
         boolean preview,
         Consumer<UUID> onSpawned
     ) {
+        spawnDisplay(entry.createStack(false, false), state, preview, onSpawned);
+    }
+
+    private static void spawnDisplay(
+        ItemStack sourceStack,
+        PlacementState state,
+        boolean preview,
+        Consumer<UUID> onSpawned
+    ) {
         Minecraft client = Minecraft.getInstance();
         MinecraftServer server = client.getSingleplayerServer();
         if (server == null || client.player == null) {
             return;
         }
         UUID playerId = client.player.getUUID();
-        ItemStack stack = entry.createStack(false, false);
+        ItemStack stack = sourceStack.copy();
         server.execute(() -> {
             ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerId);
             if (serverPlayer == null) {
