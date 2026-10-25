@@ -5,6 +5,8 @@ import de.opsucht.resourcegrabber.mixin.ItemDisplayEntityAccessor;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import com.mojang.math.Transformation;
@@ -23,7 +25,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -43,6 +48,8 @@ final class PlacementController {
     static void register() {
         UseBlockCallback.EVENT.register(PlacementController::useBlock);
         UseEntityCallback.EVENT.register(PlacementController::useEntity);
+        AttackBlockCallback.EVENT.register(PlacementController::attackBlock);
+        AttackEntityCallback.EVENT.register(PlacementController::attackEntity);
         ClientTickEvents.END_CLIENT_TICK.register(PlacementController::tickPreview);
     }
 
@@ -209,12 +216,56 @@ final class PlacementController {
         return selectEditTarget() ? InteractionResult.SUCCESS : InteractionResult.FAIL;
     }
 
+    private static InteractionResult attackBlock(
+        Player player,
+        Level world,
+        InteractionHand hand,
+        BlockPos pos,
+        Direction direction
+    ) {
+        if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND
+            || editMode || pendingEntry != null) {
+            return InteractionResult.PASS;
+        }
+        return tryBreakGoldenHorseArmor(findTarget(Minecraft.getInstance()))
+            ? InteractionResult.SUCCESS : InteractionResult.PASS;
+    }
+
+    private static InteractionResult attackEntity(
+        Player player,
+        Level world,
+        InteractionHand hand,
+        Entity entity,
+        EntityHitResult hit
+    ) {
+        if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND
+            || editMode || pendingEntry != null
+            || !(entity instanceof Display.ItemDisplay)) {
+            return InteractionResult.PASS;
+        }
+        return tryBreakGoldenHorseArmor(entity.getUUID())
+            ? InteractionResult.SUCCESS : InteractionResult.PASS;
+    }
+
     private static void tickEditTarget(Minecraft client) {
         if (client.player == null || client.level == null
             || client.getSingleplayerServer() == null || client.isPaused()) {
             editMode = false;
             editTargetId = null;
             return;
+        }
+        UUID bestId = findTarget(client);
+        editTargetId = bestId;
+        if (bestId != null && !bestId.equals(announcedEditTargetId)) {
+            announcedEditTargetId = bestId;
+            client.gui.hud.setOverlayMessage(Component.translatable(
+                "message.resourcegrabber.edit_target"), false);
+        }
+    }
+
+    private static UUID findTarget(Minecraft client) {
+        if (client.player == null || client.level == null) {
+            return null;
         }
         Vec3 eye = client.player.getEyePosition();
         Vec3 look = client.player.getViewVector(1.0F).normalize();
@@ -228,17 +279,53 @@ final class PlacementController {
                 continue;
             }
             double perpendicularSquared = delta.lengthSqr() - distance * distance;
-            if (perpendicularSquared <= 0.64D) {
+            if (perpendicularSquared <= 1.44D) {
                 bestDistance = distance;
                 bestId = display.getUUID();
             }
         }
-        editTargetId = bestId;
-        if (bestId != null && !bestId.equals(announcedEditTargetId)) {
-            announcedEditTargetId = bestId;
-            client.gui.hud.setOverlayMessage(Component.translatable(
-                "message.resourcegrabber.edit_target"), false);
+        return bestId;
+    }
+
+    private static boolean tryBreakGoldenHorseArmor(UUID targetId) {
+        Minecraft client = Minecraft.getInstance();
+        if (targetId == null || client.level == null || client.player == null
+            || client.getSingleplayerServer() == null) {
+            return false;
         }
+        Entity clientEntity = client.level.getEntity(targetId);
+        if (!(clientEntity instanceof Display.ItemDisplay clientDisplay)) {
+            return false;
+        }
+        ItemStack clientStack = ((ItemDisplayEntityAccessor)clientDisplay)
+            .resourcegrabber$getItemStack();
+        if (!clientStack.is(Items.GOLDEN_HORSE_ARMOR)) {
+            return false;
+        }
+        MinecraftServer server = client.getSingleplayerServer();
+        UUID playerId = client.player.getUUID();
+        server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+            if (player == null) {
+                return;
+            }
+            Entity serverEntity = player.level().getEntity(targetId);
+            if (!(serverEntity instanceof Display.ItemDisplay display)) {
+                return;
+            }
+            ItemStack stack = ((ItemDisplayEntityAccessor)display)
+                .resourcegrabber$getItemStack().copy();
+            if (!stack.is(Items.GOLDEN_HORSE_ARMOR)) {
+                return;
+            }
+            display.discard();
+            if (!player.getInventory().add(stack)) {
+                player.drop(stack, false);
+            }
+            ResourceGrabberClient.notifyClient(Component.translatable(
+                "message.resourcegrabber.model_broken"));
+        });
+        return true;
     }
 
     private static boolean selectEditTarget() {
