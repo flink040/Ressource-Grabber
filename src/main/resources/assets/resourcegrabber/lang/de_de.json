@@ -19,6 +19,7 @@
   "message.resourcegrabber.edit_mode": "Bearbeitungsmodus aktiv · Modell ansehen und rechtsklicken · ESC bricht ab.",
   "message.resourcegrabber.edit_target": "Modell erkannt · Rechtsklick öffnet den Editor.",
   "message.resourcegrabber.edit_no_target": "Kein Item-Display im Fadenkreuz gefunden.",
+  "message.resourcegrabber.model_broken": "Modell abgebaut · Gegenstand wurde zurückgegeben.",
   "message.resourcegrabber.placement_failed": "Resource Grabber: Das Modell konnte nicht platziert werden.",
   "message.resourcegrabber.model_duplicated": "Resource Grabber: Modell dupliziert.",
   "dialog.resourcegrabber.history_export": "Resource-Grabber-History exportieren",

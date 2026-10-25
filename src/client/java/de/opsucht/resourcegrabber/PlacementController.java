@@ -5,6 +5,8 @@ import de.opsucht.resourcegrabber.mixin.ItemDisplayEntityAccessor;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.client.MinecraftClient;
@@ -15,6 +17,7 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.decoration.DisplayEntity;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -24,6 +27,8 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.AffineTransformation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Quaternionf;
@@ -42,6 +47,8 @@ final class PlacementController {
     static void register() {
         UseBlockCallback.EVENT.register(PlacementController::useBlock);
         UseEntityCallback.EVENT.register(PlacementController::useEntity);
+        AttackBlockCallback.EVENT.register(PlacementController::attackBlock);
+        AttackEntityCallback.EVENT.register(PlacementController::attackEntity);
         ClientTickEvents.END_CLIENT_TICK.register(PlacementController::tickPreview);
     }
 
@@ -206,12 +213,56 @@ final class PlacementController {
         return selectEditTarget() ? ActionResult.SUCCESS : ActionResult.FAIL;
     }
 
+    private static ActionResult attackBlock(
+        net.minecraft.entity.player.PlayerEntity player,
+        net.minecraft.world.World world,
+        Hand hand,
+        BlockPos pos,
+        Direction direction
+    ) {
+        if (!world.isClient() || hand != Hand.MAIN_HAND
+            || editMode || pendingEntry != null) {
+            return ActionResult.PASS;
+        }
+        return tryBreakGoldenHorseArmor(findTarget(MinecraftClient.getInstance()))
+            ? ActionResult.SUCCESS : ActionResult.PASS;
+    }
+
+    private static ActionResult attackEntity(
+        net.minecraft.entity.player.PlayerEntity player,
+        net.minecraft.world.World world,
+        Hand hand,
+        Entity entity,
+        EntityHitResult hit
+    ) {
+        if (!world.isClient() || hand != Hand.MAIN_HAND
+            || editMode || pendingEntry != null
+            || !(entity instanceof DisplayEntity.ItemDisplayEntity)) {
+            return ActionResult.PASS;
+        }
+        return tryBreakGoldenHorseArmor(entity.getUuid())
+            ? ActionResult.SUCCESS : ActionResult.PASS;
+    }
+
     private static void tickEditTarget(MinecraftClient client) {
         if (client.player == null || client.world == null || client.getServer() == null
             || client.currentScreen != null) {
             editMode = false;
             editTargetId = null;
             return;
+        }
+        UUID bestId = findTarget(client);
+        editTargetId = bestId;
+        if (bestId != null && !bestId.equals(announcedEditTargetId)) {
+            announcedEditTargetId = bestId;
+            client.inGameHud.setOverlayMessage(Text.translatable(
+                "message.resourcegrabber.edit_target"), false);
+        }
+    }
+
+    private static UUID findTarget(MinecraftClient client) {
+        if (client.player == null || client.world == null) {
+            return null;
         }
         Vec3d eye = client.player.getEyePos();
         Vec3d look = client.player.getRotationVec(1.0F).normalize();
@@ -227,17 +278,53 @@ final class PlacementController {
                 continue;
             }
             double perpendicularSquared = delta.lengthSquared() - distance * distance;
-            if (perpendicularSquared <= 0.64D) {
+            if (perpendicularSquared <= 1.44D) {
                 bestDistance = distance;
                 bestId = display.getUuid();
             }
         }
-        editTargetId = bestId;
-        if (bestId != null && !bestId.equals(announcedEditTargetId)) {
-            announcedEditTargetId = bestId;
-            client.inGameHud.setOverlayMessage(Text.translatable(
-                "message.resourcegrabber.edit_target"), false);
+        return bestId;
+    }
+
+    private static boolean tryBreakGoldenHorseArmor(UUID targetId) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (targetId == null || client.world == null || client.player == null
+            || client.getServer() == null) {
+            return false;
         }
+        Entity clientEntity = client.world.getEntity(targetId);
+        if (!(clientEntity instanceof DisplayEntity.ItemDisplayEntity clientDisplay)) {
+            return false;
+        }
+        ItemStack clientStack = ((ItemDisplayEntityAccessor)clientDisplay)
+            .resourcegrabber$getItemStack();
+        if (!clientStack.isOf(Items.GOLDEN_HORSE_ARMOR)) {
+            return false;
+        }
+        MinecraftServer server = client.getServer();
+        UUID playerId = client.player.getUuid();
+        server.execute(() -> {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerId);
+            if (player == null) {
+                return;
+            }
+            Entity serverEntity = player.getEntityWorld().getEntity(targetId);
+            if (!(serverEntity instanceof DisplayEntity.ItemDisplayEntity display)) {
+                return;
+            }
+            ItemStack stack = ((ItemDisplayEntityAccessor)display)
+                .resourcegrabber$getItemStack().copy();
+            if (!stack.isOf(Items.GOLDEN_HORSE_ARMOR)) {
+                return;
+            }
+            display.discard();
+            if (!player.getInventory().insertStack(stack)) {
+                player.dropItem(stack, false);
+            }
+            ResourceGrabberClient.notifyClient(Text.translatable(
+                "message.resourcegrabber.model_broken"));
+        });
+        return true;
     }
 
     private static boolean selectEditTarget() {

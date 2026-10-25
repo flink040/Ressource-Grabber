@@ -22,6 +22,8 @@ for their Custom Model Data items.
   removal controls. Placement works without cheats or `/summon` commands.
 - Reopens the editor for existing item displays with `/customitems edit`:
   look at the model, right-click, and use **Remove** when needed.
+- Lets golden-horse-armor model displays behave like placed items in singleplayer:
+  left-clicking removes the display and returns the exact custom item.
 - Shows a live placement preview and includes numeric editing, independent X/Y/Z
   rotation, adjustable step sizes, undo, reset, duplicate, face-player, and
   block-center tools.
