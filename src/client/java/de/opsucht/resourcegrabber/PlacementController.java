@@ -44,6 +44,7 @@ final class PlacementController {
     private static boolean editMode;
     private static UUID editTargetId;
     private static UUID announcedEditTargetId;
+    private static boolean attackWasDown;
 
     static void register() {
         UseBlockCallback.EVENT.register(PlacementController::useBlock);
@@ -150,6 +151,12 @@ final class PlacementController {
     }
 
     private static void tickPreview(Minecraft client) {
+        boolean attackDown = client.options.keyAttack.isDown();
+        if (attackDown && !attackWasDown && !editMode && pendingEntry == null
+            && !client.isPaused()) {
+            tryBreakGoldenHorseArmor(findGoldenHorseArmorTarget(client));
+        }
+        attackWasDown = attackDown;
         if (editMode) {
             tickEditTarget(client);
             return;
@@ -280,6 +287,35 @@ final class PlacementController {
             }
             double perpendicularSquared = delta.lengthSqr() - distance * distance;
             if (perpendicularSquared <= 1.44D) {
+                bestDistance = distance;
+                bestId = display.getUUID();
+            }
+        }
+        return bestId;
+    }
+
+    private static UUID findGoldenHorseArmorTarget(Minecraft client) {
+        if (client.player == null || client.level == null) {
+            return null;
+        }
+        Vec3 eye = client.player.getEyePosition();
+        Vec3 look = client.player.getViewVector(1.0F).normalize();
+        double bestDistance = 8.0D;
+        UUID bestId = null;
+        for (Display.ItemDisplay display : client.level.getEntitiesOfClass(
+            Display.ItemDisplay.class, client.player.getBoundingBox().inflate(8.0D))) {
+            ItemStack stack = ((ItemDisplayEntityAccessor)display)
+                .resourcegrabber$getItemStack();
+            if (!stack.is(Items.GOLDEN_HORSE_ARMOR)) {
+                continue;
+            }
+            Vec3 delta = display.position().subtract(eye);
+            double distance = delta.dot(look);
+            if (distance < 0.0D || distance > bestDistance) {
+                continue;
+            }
+            double perpendicularSquared = delta.lengthSqr() - distance * distance;
+            if (perpendicularSquared <= 4.0D) {
                 bestDistance = distance;
                 bestId = display.getUUID();
             }
