@@ -8,6 +8,9 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(DisplayEntity.ItemDisplayEntity.class)
 public interface ItemDisplayEntityAccessor {
+    @Invoker("getItemStack")
+    ItemStack resourcegrabber$getItemStack();
+
     @Invoker("setItemStack")
     void resourcegrabber$setItemStack(ItemStack stack);
 

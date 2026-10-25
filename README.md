@@ -20,6 +20,8 @@ for their Custom Model Data items.
   right-clicking it, then right-clicking a block in the world.
 - Opens a compact placement editor for precise position, rotation, scale, and
   removal controls. Placement works without cheats or `/summon` commands.
+- Reopens the editor for existing item displays with `/customitems edit`:
+  look at the model, right-click, and use **Remove** when needed.
 - Shows a live placement preview and includes numeric editing, independent X/Y/Z
   rotation, adjustable step sizes, undo, reset, duplicate, face-player, and
   block-center tools.
@@ -54,6 +56,8 @@ for their Custom Model Data items.
 5. Left-click an entry to prepare its `/give` command in chat.
 6. In singleplayer, right-click an entry and then right-click a block to place
    it. Use the editor that opens to adjust its position, rotation, and scale.
+7. To edit or remove it later, run `/customitems edit`, look at the model, and
+   right-click to reopen the editor.
 
 Single-click an item card to select it, double-click it to prepare `/give`, or
 use the visible action buttons. Favorites are stored in
