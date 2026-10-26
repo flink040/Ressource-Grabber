@@ -3,6 +3,7 @@
   "package": "de.opsucht.resourcegrabber.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ArmorStandEntityAccessor",
     "DownloaderMixin",
     "DisplayEntityAccessor",
     "ItemDisplayEntityAccessor"

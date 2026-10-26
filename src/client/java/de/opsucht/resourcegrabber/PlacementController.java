@@ -2,6 +2,9 @@ package de.opsucht.resourcegrabber;
 
 import de.opsucht.resourcegrabber.mixin.DisplayEntityAccessor;
 import de.opsucht.resourcegrabber.mixin.ItemDisplayEntityAccessor;
+import de.opsucht.resourcegrabber.mixin.ArmorStandEntityAccessor;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -22,6 +25,8 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -32,11 +37,14 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Rotations;
 import org.joml.Quaternionf;
 import org.joml.Vector3fc;
 import org.joml.Vector3f;
 
 final class PlacementController {
+    private static final double ARMOR_STAND_HEAD_OFFSET = 1.44D;
+    private static final String MODEL_TAG = "resourcegrabber_model";
     private static CustomItemEntry pendingEntry;
     private static UUID previewEntityId;
     private static PlacementState previewState;
@@ -115,11 +123,11 @@ final class PlacementController {
     }
 
     static void update(UUID entityId, PlacementState state) {
-        runOnDisplay(entityId, display -> applyState(display, state));
+        runOnModel(entityId, entity -> applyState(entity, state));
     }
 
     static void remove(UUID entityId) {
-        runOnDisplay(entityId, Entity::discard);
+        runOnModel(entityId, Entity::discard);
     }
 
     static void duplicate(CustomItemEntry entry, PlacementState state) {
@@ -216,7 +224,7 @@ final class PlacementController {
         EntityHitResult hit
     ) {
         if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND || !editMode
-            || !(entity instanceof Display.ItemDisplay)) {
+            || !isPlacedModel(entity)) {
             return InteractionResult.PASS;
         }
         editTargetId = entity.getUUID();
@@ -234,7 +242,7 @@ final class PlacementController {
             || editMode || pendingEntry != null) {
             return InteractionResult.PASS;
         }
-        return tryBreakGoldenHorseArmor(findTarget(Minecraft.getInstance()))
+        return tryBreakGoldenHorseArmor(findGoldenHorseArmorTarget(Minecraft.getInstance()))
             ? InteractionResult.SUCCESS : InteractionResult.PASS;
     }
 
@@ -247,7 +255,7 @@ final class PlacementController {
     ) {
         if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND
             || editMode || pendingEntry != null
-            || !(entity instanceof Display.ItemDisplay)) {
+            || !isPlacedModel(entity)) {
             return InteractionResult.PASS;
         }
         return tryBreakGoldenHorseArmor(entity.getUUID())
@@ -271,30 +279,16 @@ final class PlacementController {
     }
 
     private static UUID findTarget(Minecraft client) {
-        if (client.player == null || client.level == null) {
-            return null;
-        }
-        Vec3 eye = client.player.getEyePosition();
-        Vec3 look = client.player.getViewVector(1.0F).normalize();
-        double bestDistance = 8.0D;
-        UUID bestId = null;
-        for (Display.ItemDisplay display : client.level.getEntitiesOfClass(
-            Display.ItemDisplay.class, client.player.getBoundingBox().inflate(8.0D))) {
-            Vec3 delta = display.position().subtract(eye);
-            double distance = delta.dot(look);
-            if (distance < 0.0D || distance > bestDistance) {
-                continue;
-            }
-            double perpendicularSquared = delta.lengthSqr() - distance * distance;
-            if (perpendicularSquared <= 1.44D) {
-                bestDistance = distance;
-                bestId = display.getUUID();
-            }
-        }
-        return bestId;
+        return findTarget(client, false, 1.44D);
     }
 
     private static UUID findGoldenHorseArmorTarget(Minecraft client) {
+        return findTarget(client, true, 4.0D);
+    }
+
+    private static UUID findTarget(
+        Minecraft client, boolean goldenHorseArmorOnly, double toleranceSquared
+    ) {
         if (client.player == null || client.level == null) {
             return null;
         }
@@ -302,22 +296,29 @@ final class PlacementController {
         Vec3 look = client.player.getViewVector(1.0F).normalize();
         double bestDistance = 8.0D;
         UUID bestId = null;
-        for (Display.ItemDisplay display : client.level.getEntitiesOfClass(
-            Display.ItemDisplay.class, client.player.getBoundingBox().inflate(8.0D))) {
-            ItemStack stack = ((ItemDisplayEntityAccessor)display)
-                .resourcegrabber$getItemStack();
-            if (!stack.is(Items.GOLDEN_HORSE_ARMOR)) {
+        List<Entity> candidates = new ArrayList<>();
+        candidates.addAll(client.level.getEntitiesOfClass(Display.ItemDisplay.class,
+            client.player.getBoundingBox().inflate(8.0D)));
+        candidates.addAll(client.level.getEntitiesOfClass(ArmorStand.class,
+            client.player.getBoundingBox().inflate(8.0D)));
+        for (Entity entity : candidates) {
+            ItemStack stack = modelStack(entity);
+            if (stack.isEmpty()
+                || goldenHorseArmorOnly && !stack.is(Items.GOLDEN_HORSE_ARMOR)) {
                 continue;
             }
-            Vec3 delta = display.position().subtract(eye);
+            Vec3 targetPosition = entity instanceof ArmorStand stand
+                ? entity.position().add(0.0D, ARMOR_STAND_HEAD_OFFSET * stand.getScale(), 0.0D)
+                : entity.position();
+            Vec3 delta = targetPosition.subtract(eye);
             double distance = delta.dot(look);
             if (distance < 0.0D || distance > bestDistance) {
                 continue;
             }
             double perpendicularSquared = delta.lengthSqr() - distance * distance;
-            if (perpendicularSquared <= 4.0D) {
+            if (perpendicularSquared <= toleranceSquared) {
                 bestDistance = distance;
-                bestId = display.getUUID();
+                bestId = entity.getUUID();
             }
         }
         return bestId;
@@ -330,11 +331,7 @@ final class PlacementController {
             return false;
         }
         Entity clientEntity = client.level.getEntity(targetId);
-        if (!(clientEntity instanceof Display.ItemDisplay clientDisplay)) {
-            return false;
-        }
-        ItemStack clientStack = ((ItemDisplayEntityAccessor)clientDisplay)
-            .resourcegrabber$getItemStack();
+        ItemStack clientStack = modelStack(clientEntity);
         if (!clientStack.is(Items.GOLDEN_HORSE_ARMOR)) {
             return false;
         }
@@ -346,15 +343,11 @@ final class PlacementController {
                 return;
             }
             Entity serverEntity = player.level().getEntity(targetId);
-            if (!(serverEntity instanceof Display.ItemDisplay display)) {
-                return;
-            }
-            ItemStack stack = ((ItemDisplayEntityAccessor)display)
-                .resourcegrabber$getItemStack().copy();
+            ItemStack stack = modelStack(serverEntity).copy();
             if (!stack.is(Items.GOLDEN_HORSE_ARMOR)) {
                 return;
             }
-            display.discard();
+            serverEntity.discard();
             if (!player.getInventory().add(stack)) {
                 player.drop(stack, false);
             }
@@ -372,16 +365,15 @@ final class PlacementController {
             return false;
         }
         Entity entity = client.level.getEntity(editTargetId);
-        if (!(entity instanceof Display.ItemDisplay display)) {
+        if (!isPlacedModel(entity)) {
             return false;
         }
-        ItemStack stack = ((ItemDisplayEntityAccessor)display)
-            .resourcegrabber$getItemStack().copy();
-        PlacementState state = readState(display);
+        ItemStack stack = modelStack(entity).copy();
+        PlacementState state = readState(entity);
         String name = stack.isEmpty()
             ? Component.translatable("screen.resourcegrabber.model_editor").getString()
             : stack.getHoverName().getString();
-        UUID entityId = display.getUUID();
+        UUID entityId = entity.getUUID();
         editMode = false;
         editTargetId = null;
         announcedEditTargetId = null;
@@ -390,17 +382,28 @@ final class PlacementController {
         return true;
     }
 
-    private static PlacementState readState(Display.ItemDisplay display) {
-        Transformation transformation = DisplayEntityAccessor.resourcegrabber$getTransformation(
-            display.getEntityData());
-        Vector3fc scaleVector = transformation.scale();
-        float scale = (scaleVector.x() + scaleVector.y() + scaleVector.z()) / 3.0F;
-        Vector3f rotation = new Quaternionf(transformation.leftRotation())
-            .getEulerAnglesXYZ(new Vector3f());
-        return new PlacementState(display.getX(), display.getY(), display.getZ(),
-            (float)Math.toDegrees(rotation.x),
-            (float)-Math.toDegrees(rotation.y),
-            (float)Math.toDegrees(rotation.z), scale);
+    private static PlacementState readState(Entity entity) {
+        if (entity instanceof ArmorStand stand) {
+            float scale = stand.getScale();
+            Rotations head = stand.getHeadPose();
+            return new PlacementState(stand.getX(),
+                stand.getY() + ARMOR_STAND_HEAD_OFFSET * scale, stand.getZ(),
+                head.x(), stand.getYRot(), head.z(), scale);
+        }
+        if (entity instanceof Display.ItemDisplay display) {
+            Transformation transformation = DisplayEntityAccessor.resourcegrabber$getTransformation(
+                display.getEntityData());
+            Vector3fc scaleVector = transformation.scale();
+            float scale = (scaleVector.x() + scaleVector.y() + scaleVector.z()) / 3.0F;
+            Vector3f rotation = new Quaternionf(transformation.leftRotation())
+                .getEulerAnglesXYZ(new Vector3f());
+            return new PlacementState(display.getX(), display.getY(), display.getZ(),
+                (float)Math.toDegrees(rotation.x),
+                (float)-Math.toDegrees(rotation.y),
+                (float)Math.toDegrees(rotation.z), scale);
+        }
+        return new PlacementState(entity.getX(), entity.getY(), entity.getZ(),
+            0.0F, entity.getYRot(), 0.0F, 1.0F);
     }
 
     private static void finishCommit() {
@@ -411,7 +414,7 @@ final class PlacementController {
         if (entityId == null || entry == null || state == null) {
             return;
         }
-        runOnDisplay(entityId, display -> display.setGlowingTag(false));
+        runOnModel(entityId, entity -> entity.setGlowingTag(false));
         pendingEntry = null;
         previewEntityId = null;
         previewState = null;
@@ -460,12 +463,34 @@ final class PlacementController {
                 return;
             }
             ServerLevel serverWorld = serverPlayer.level();
+            if (stack.is(Items.GOLDEN_HORSE_ARMOR)) {
+                ArmorStand stand = new ArmorStand(serverWorld,
+                    state.x(), state.y() - ARMOR_STAND_HEAD_OFFSET * state.scale(), state.z());
+                stand.setInvisible(true);
+                stand.setNoGravity(true);
+                stand.setSilent(true);
+                stand.setInvulnerable(true);
+                ((ArmorStandEntityAccessor)stand).resourcegrabber$setMarker(true);
+                stand.setItemSlot(EquipmentSlot.HEAD, stack.copy());
+                stand.addTag(MODEL_TAG);
+                stand.setGlowingTag(preview);
+                applyState(stand, state);
+                if (!serverWorld.addFreshEntity(stand)) {
+                    ResourceGrabberClient.notifyClient(Component.translatable(
+                        "message.resourcegrabber.placement_failed"));
+                    return;
+                }
+                UUID entityId = stand.getUUID();
+                client.execute(() -> onSpawned.accept(entityId));
+                return;
+            }
             Display.ItemDisplay display = new Display.ItemDisplay(
                 EntityTypes.ITEM_DISPLAY, serverWorld);
             ((ItemDisplayEntityAccessor)display).resourcegrabber$setItemStack(stack.copy());
             ((ItemDisplayEntityAccessor)display).resourcegrabber$setItemDisplayContext(
                 ItemDisplayContext.FIXED);
             display.setGlowingTag(preview);
+            display.addTag(MODEL_TAG);
             applyState(display, state);
             if (!serverWorld.addFreshEntity(display)) {
                 ResourceGrabberClient.notifyClient(Component.translatable(
@@ -477,8 +502,8 @@ final class PlacementController {
         });
     }
 
-    private static void runOnDisplay(
-        UUID entityId, Consumer<Display.ItemDisplay> action
+    private static void runOnModel(
+        UUID entityId, Consumer<Entity> action
     ) {
         Minecraft client = Minecraft.getInstance();
         MinecraftServer server = client.getSingleplayerServer();
@@ -492,15 +517,31 @@ final class PlacementController {
                 return;
             }
             Entity entity = player.level().getEntity(entityId);
-            if (entity instanceof Display.ItemDisplay display) {
-                action.accept(display);
+            if (isPlacedModel(entity)) {
+                action.accept(entity);
             }
         });
     }
 
     private static void applyState(
-        Display.ItemDisplay display, PlacementState state
+        Entity entity, PlacementState state
     ) {
+        if (entity instanceof ArmorStand stand) {
+            var scaleAttribute = stand.getAttribute(Attributes.SCALE);
+            if (scaleAttribute != null) {
+                scaleAttribute.setBaseValue(state.scale());
+            }
+            stand.setPos(state.x(),
+                state.y() - ARMOR_STAND_HEAD_OFFSET * state.scale(), state.z());
+            stand.setYRot(state.rotationY());
+            stand.setYBodyRot(state.rotationY());
+            stand.setYHeadRot(state.rotationY());
+            stand.setHeadPose(new Rotations(state.rotationX(), 0.0F, state.rotationZ()));
+            return;
+        }
+        if (!(entity instanceof Display.ItemDisplay display)) {
+            return;
+        }
         display.setPos(state.x(), state.y(), state.z());
         Quaternionf rotation = new Quaternionf().rotationXYZ(
             (float)Math.toRadians(state.rotationX()),
@@ -509,6 +550,22 @@ final class PlacementController {
         Vector3f scale = new Vector3f(state.scale(), state.scale(), state.scale());
         ((DisplayEntityAccessor)display).resourcegrabber$setTransformation(
             new Transformation(new Vector3f(), rotation, scale, new Quaternionf()));
+    }
+
+    private static boolean isPlacedModel(Entity entity) {
+        return entity instanceof Display.ItemDisplay
+            || entity instanceof ArmorStand stand
+                && stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.GOLDEN_HORSE_ARMOR);
+    }
+
+    private static ItemStack modelStack(Entity entity) {
+        if (entity instanceof Display.ItemDisplay display) {
+            return ((ItemDisplayEntityAccessor)display).resourcegrabber$getItemStack();
+        }
+        if (entity instanceof ArmorStand stand) {
+            return stand.getItemBySlot(EquipmentSlot.HEAD);
+        }
+        return ItemStack.EMPTY;
     }
 
     record PlacementState(
