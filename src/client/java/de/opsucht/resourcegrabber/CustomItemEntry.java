@@ -18,8 +18,18 @@ public record CustomItemEntry(
     String itemId,
     int floatIndex,
     float threshold,
-    String modelId
+    String modelId,
+    boolean fixedPlacement
 ) {
+    public CustomItemEntry(String itemId, int floatIndex, float threshold, String modelId) {
+        this(itemId, floatIndex, threshold, modelId, false);
+    }
+
+    CustomItemEntry withFixedPlacement(boolean value) {
+        return new CustomItemEntry(this.itemId, this.floatIndex, this.threshold,
+            this.modelId, value);
+    }
+
     public ItemStack createStack() {
         return this.createStack(true, true);
     }
