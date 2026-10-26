@@ -58,6 +58,7 @@ final class PlacementController {
     private static UUID editTargetId;
     private static UUID announcedEditTargetId;
     private static boolean attackWasDown;
+    private static boolean modelBreakHandledThisPress;
 
     static void register() {
         UseBlockCallback.EVENT.register(PlacementController::useBlock);
@@ -174,7 +175,10 @@ final class PlacementController {
         boolean attackDown = client.options.keyAttack.isDown();
         if (attackDown && !attackWasDown && !editMode && pendingEntry == null
             && !client.isPaused()) {
-            tryBreakGoldenHorseArmor(findGoldenHorseArmorTarget(client));
+            modelBreakHandledThisPress = tryBreakGoldenHorseArmor(
+                findGoldenHorseArmorTarget(client));
+        } else if (!attackDown) {
+            modelBreakHandledThisPress = false;
         }
         attackWasDown = attackDown;
         if (editMode) {
@@ -293,8 +297,12 @@ final class PlacementController {
             || editMode || pendingEntry != null) {
             return InteractionResult.PASS;
         }
-        return tryBreakGoldenHorseArmor(findGoldenHorseArmorTarget(Minecraft.getInstance()))
-            ? InteractionResult.SUCCESS : InteractionResult.PASS;
+        if (modelBreakHandledThisPress) {
+            return InteractionResult.FAIL;
+        }
+        modelBreakHandledThisPress = tryBreakGoldenHorseArmor(
+            findGoldenHorseArmorTarget(Minecraft.getInstance()));
+        return modelBreakHandledThisPress ? InteractionResult.FAIL : InteractionResult.PASS;
     }
 
     private static InteractionResult attackEntity(
