@@ -20,10 +20,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomModelData;
 import org.slf4j.Logger;
 
 public final class CustomItemCatalog {
@@ -42,6 +46,28 @@ public final class CustomItemCatalog {
 
     public static boolean contains(String itemId, int floatIndex, float threshold) {
         return itemKeys.contains(itemKey(itemId, floatIndex, threshold));
+    }
+
+    public static boolean prefersFixedPlacement(ItemStack stack) {
+        Identifier identifier = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        CustomModelData modelData = stack.get(DataComponents.CUSTOM_MODEL_DATA);
+        if (identifier == null || modelData == null || modelData.floats().isEmpty()) {
+            return false;
+        }
+        String itemId = identifier.toString();
+        CustomItemEntry bestMatch = null;
+        for (CustomItemEntry entry : items) {
+            if (!entry.itemId().equals(itemId)
+                || entry.floatIndex() >= modelData.floats().size()) {
+                continue;
+            }
+            float value = modelData.floats().get(entry.floatIndex());
+            if (entry.threshold() <= value
+                && (bestMatch == null || entry.threshold() > bestMatch.threshold())) {
+                bestMatch = entry;
+            }
+        }
+        return bestMatch != null && bestMatch.fixedPlacement();
     }
 
     public static void replace(List<CustomItemEntry> discovered, String serverName) {
@@ -98,8 +124,64 @@ public final class CustomItemCatalog {
                         entry.getName(), packPath, exception);
                 }
             }
+            Map<String, Boolean> fixedPlacementModels = new HashMap<>();
+            return result.stream()
+                .map(item -> item.withFixedPlacement(fixedPlacementModels.computeIfAbsent(
+                    item.modelId(), modelId -> hasHiddenHeadTransform(zip, modelId))))
+                .toList();
         }
-        return result;
+    }
+
+    private static boolean hasHiddenHeadTransform(ZipFile zip, String modelId) {
+        return hasHiddenHeadTransform(zip, modelId, new HashSet<>());
+    }
+
+    private static boolean hasHiddenHeadTransform(
+        ZipFile zip, String modelId, Set<String> visited
+    ) {
+        if (modelId == null || !visited.add(modelId)) {
+            return false;
+        }
+        String namespace = "minecraft";
+        String path = modelId;
+        int separator = modelId.indexOf(':');
+        if (separator >= 0) {
+            namespace = modelId.substring(0, separator);
+            path = modelId.substring(separator + 1);
+        }
+        ZipEntry entry = zip.getEntry("assets/" + namespace + "/models/" + path + ".json");
+        if (entry == null || entry.isDirectory()) {
+            return false;
+        }
+        try (Reader reader = new InputStreamReader(
+            zip.getInputStream(entry), StandardCharsets.UTF_8)) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            if (!parsed.isJsonObject()) {
+                return false;
+            }
+            JsonObject model = parsed.getAsJsonObject();
+            if (model.has("display") && model.get("display").isJsonObject()) {
+                JsonObject display = model.getAsJsonObject("display");
+                if (display.has("head") && display.get("head").isJsonObject()) {
+                    JsonObject head = display.getAsJsonObject("head");
+                    if (head.has("scale") && head.get("scale").isJsonArray()) {
+                        JsonArray scale = head.getAsJsonArray("scale");
+                        if (scale.size() >= 3
+                            && Math.abs(scale.get(0).getAsDouble()) < 0.0001D
+                            && Math.abs(scale.get(1).getAsDouble()) < 0.0001D
+                            && Math.abs(scale.get(2).getAsDouble()) < 0.0001D) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+            String parent = stringValue(model.get("parent"));
+            return parent != null && hasHiddenHeadTransform(zip, parent, visited);
+        } catch (IOException | RuntimeException exception) {
+            LOGGER.debug("Could not inspect display transforms for model {}", modelId, exception);
+            return false;
+        }
     }
 
     private static Optional<ItemDefinition> getItemDefinition(String name) {

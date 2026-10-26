@@ -146,7 +146,8 @@ final class PlacementController {
     }
 
     static void duplicate(ItemStack stack, PlacementState state) {
-        spawnDisplay(stack, state.offset(0.25D, 0.0D, 0.25D), false, entityId ->
+        spawnDisplay(stack, state.offset(0.25D, 0.0D, 0.25D), false,
+            CustomItemCatalog.prefersFixedPlacement(stack), entityId ->
             ResourceGrabberClient.notifyClient(Component.translatable(
                 "message.resourcegrabber.model_duplicated")));
     }
@@ -246,7 +247,8 @@ final class PlacementController {
         PlacementState state = stateAt(hit, player.getYRot());
         UUID playerId = client.player.getUUID();
         boolean consume = !client.player.getAbilities().instabuild;
-        spawnDisplay(placedStack, state, false, entityId -> {
+        spawnDisplay(placedStack, state, false,
+            CustomItemCatalog.prefersFixedPlacement(placedStack), entityId -> {
             if (consume) {
                 server.execute(() -> {
                     ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerId);
@@ -495,13 +497,15 @@ final class PlacementController {
         boolean preview,
         Consumer<UUID> onSpawned
     ) {
-        spawnDisplay(entry.createStack(false, false), state, preview, onSpawned);
+        spawnDisplay(entry.createStack(false, false), state, preview,
+            entry.fixedPlacement(), onSpawned);
     }
 
     private static void spawnDisplay(
         ItemStack sourceStack,
         PlacementState state,
         boolean preview,
+        boolean fixedPlacement,
         Consumer<UUID> onSpawned
     ) {
         Minecraft client = Minecraft.getInstance();
@@ -517,7 +521,7 @@ final class PlacementController {
                 return;
             }
             ServerLevel serverWorld = serverPlayer.level();
-            if (stack.is(Items.GOLDEN_HORSE_ARMOR)) {
+            if (stack.is(Items.GOLDEN_HORSE_ARMOR) && !fixedPlacement) {
                 ArmorStand stand = new ArmorStand(serverWorld,
                     state.x(), state.y() - ARMOR_STAND_HEAD_OFFSET * state.scale(), state.z());
                 stand.setInvisible(true);
