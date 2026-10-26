@@ -191,14 +191,18 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         String serverDisplayName = getCurrentServerDisplayName();
         COPY_EXECUTOR.execute(() -> {
             try {
-                Optional<Path> savedPack = findNewestSavedPack(
+                List<Path> savedPacks = findSavedPacks(
                     client.getResourcePackDir(), serverName, serverDisplayName);
-                if (savedPack.isEmpty()) {
-                    notifyClient("message.resourcegrabber.custom_items_empty", null);
-                    return;
+                List<CustomItemEntry> loadedItems = List.of();
+                Path loadedPack = null;
+                for (Path savedPack : savedPacks) {
+                    List<CustomItemEntry> candidateItems = CustomItemCatalog.readPack(savedPack);
+                    if (!candidateItems.isEmpty()) {
+                        loadedItems = candidateItems;
+                        loadedPack = savedPack;
+                        break;
+                    }
                 }
-
-                List<CustomItemEntry> loadedItems = CustomItemCatalog.readPack(savedPack.get());
                 CustomItemCatalog.replace(loadedItems, serverName);
                 List<CustomItemEntry> loadedSnapshot = CustomItemCatalog.snapshot();
                 if (loadedSnapshot.isEmpty()) {
@@ -207,7 +211,7 @@ public final class ResourceGrabberClient implements ClientModInitializer {
                 }
 
                 LOGGER.info("Loaded {} custom-model items from {}",
-                    loadedSnapshot.size(), savedPack.get());
+                    loadedSnapshot.size(), loadedPack);
                 client.execute(() -> client.setScreen(
                     new AdvancedCustomItemsScreen(loadedSnapshot)));
             } catch (IOException | RuntimeException exception) {
@@ -412,12 +416,12 @@ public final class ResourceGrabberClient implements ClientModInitializer {
         return Optional.empty();
     }
 
-    private static Optional<Path> findNewestSavedPack(
+    private static List<Path> findSavedPacks(
         Path directory, String serverName, String serverDisplayName
     )
         throws IOException {
         if (!Files.isDirectory(directory)) {
-            return Optional.empty();
+            return List.of();
         }
 
         String currentServerPrefix = "serverpack-" + sanitize(serverName) + "-";
@@ -428,14 +432,78 @@ public final class ResourceGrabberClient implements ClientModInitializer {
                 .filter(path -> path.getFileName().toString().endsWith(".zip"))
                 .toList();
 
+            List<Path> candidates = new ArrayList<>();
             Optional<Path> currentServerPack = newestPack(packs.stream()
                 .filter(path -> {
                     String name = path.getFileName().toString();
                     return name.startsWith(currentServerPrefix)
                         || name.startsWith(currentDisplayPrefix);
                 }));
-            return currentServerPack.isPresent() ? currentServerPack : newestPack(packs.stream()
-                .filter(path -> path.getFileName().toString().startsWith("serverpack-")));
+            currentServerPack.ifPresent(path -> addCandidate(candidates, path));
+
+            List<Path> activePacks = readActiveFilePacks(directory);
+            for (int index = activePacks.size() - 1; index >= 0; index--) {
+                addCandidate(candidates, activePacks.get(index));
+            }
+
+            packs.stream()
+                .filter(path -> isResourceGrabberPackName(path.getFileName().toString()))
+                .sorted((left, right) -> lastModified(right).compareTo(lastModified(left)))
+                .forEach(path -> addCandidate(candidates, path));
+            return List.copyOf(candidates);
+        }
+    }
+
+    private static List<Path> readActiveFilePacks(Path resourcePackDirectory) {
+        Path optionsPath = resourcePackDirectory.getParent().resolve("options.txt");
+        if (!Files.isRegularFile(optionsPath)) {
+            return List.of();
+        }
+        try (Stream<String> lines = Files.lines(optionsPath, StandardCharsets.UTF_8)) {
+            Optional<String> setting = lines
+                .filter(line -> line.startsWith("resourcePacks:"))
+                .findFirst();
+            if (setting.isEmpty()) {
+                return List.of();
+            }
+            JsonElement value = JsonParser.parseString(
+                setting.get().substring("resourcePacks:".length()));
+            if (!value.isJsonArray()) {
+                return List.of();
+            }
+            List<Path> active = new ArrayList<>();
+            for (JsonElement element : value.getAsJsonArray()) {
+                if (!element.isJsonPrimitive()) {
+                    continue;
+                }
+                String id = element.getAsString();
+                if (!id.startsWith("file/")) {
+                    continue;
+                }
+                Path candidate = resourcePackDirectory.resolve(id.substring("file/".length()))
+                    .normalize();
+                if (candidate.getParent() != null
+                    && candidate.getParent().equals(resourcePackDirectory.normalize())
+                    && candidate.getFileName().toString().endsWith(".zip")
+                    && Files.isRegularFile(candidate)) {
+                    addCandidate(active, candidate);
+                }
+            }
+            return List.copyOf(active);
+        } catch (IOException | RuntimeException exception) {
+            LOGGER.debug("Could not read active resource packs from {}", optionsPath, exception);
+            return List.of();
+        }
+    }
+
+    private static boolean isResourceGrabberPackName(String name) {
+        return name.startsWith("serverpack-")
+            || name.matches(".+ - \\d{4}-\\d{2}-\\d{2}( \\(\\d+\\))?\\.zip");
+    }
+
+    private static void addCandidate(List<Path> candidates, Path candidate) {
+        if (!candidates.contains(candidate)) {
+            candidates.add(candidate);
         }
     }
 
