@@ -248,7 +248,6 @@ public final class AdvancedCustomItemsScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(this.textRenderer, this.title,
             this.contentRight / 2, 8, 0xFFFFFF);
         int first = this.page * this.pageSize;
