@@ -18,7 +18,7 @@
   "message.resourcegrabber.placement_cancelled": "Resource Grabber: placement cancelled.",
   "message.resourcegrabber.edit_mode": "Edit mode active · Look at a model and right-click · ESC cancels.",
   "message.resourcegrabber.edit_target": "Model detected · Right-click to open the editor.",
-  "message.resourcegrabber.edit_no_target": "No item display found under the crosshair.",
+  "message.resourcegrabber.edit_no_target": "No placed model under the crosshair · ESC exits edit mode.",
   "message.resourcegrabber.model_broken": "Model removed · The item was returned.",
   "message.resourcegrabber.placement_failed": "Resource Grabber: the model could not be placed.",
   "message.resourcegrabber.model_duplicated": "Resource Grabber: model duplicated.",

@@ -89,6 +89,9 @@ final class PlacementController {
             return false;
         }
         cancel();
+        editMode = false;
+        editTargetId = null;
+        announcedEditTargetId = null;
         pendingEntry = entry;
         commitRequested = false;
         float yaw = snap(client.player.getYRot(), 15.0F);
@@ -120,6 +123,9 @@ final class PlacementController {
         previewEntityId = null;
         previewState = null;
         commitRequested = false;
+        editMode = false;
+        editTargetId = null;
+        announcedEditTargetId = null;
     }
 
     static void update(UUID entityId, PlacementState state) {
@@ -204,8 +210,12 @@ final class PlacementController {
         if (world.isClientSide() && hand == InteractionHand.MAIN_HAND && editMode) {
             return selectEditTarget() ? InteractionResult.SUCCESS : InteractionResult.FAIL;
         }
-        if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND || pendingEntry == null) {
+        if (!world.isClientSide() || hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
+        }
+        if (pendingEntry == null) {
+            return placeHeldGoldenHorseArmor(player, hand, hit)
+                ? InteractionResult.SUCCESS : InteractionResult.PASS;
         }
         previewState = stateAt(hit, player.getYRot());
         commitRequested = true;
@@ -214,6 +224,40 @@ final class PlacementController {
             finishCommit();
         }
         return InteractionResult.SUCCESS;
+    }
+
+    private static boolean placeHeldGoldenHorseArmor(
+        Player player, InteractionHand hand, BlockHitResult hit
+    ) {
+        Minecraft client = Minecraft.getInstance();
+        MinecraftServer server = client.getSingleplayerServer();
+        ItemStack heldStack = player.getItemInHand(hand);
+        if (server == null || client.player == null
+            || !heldStack.is(Items.GOLDEN_HORSE_ARMOR)) {
+            return false;
+        }
+        ItemStack placedStack = heldStack.copy();
+        placedStack.setCount(1);
+        PlacementState state = stateAt(hit, player.getYRot());
+        UUID playerId = client.player.getUUID();
+        boolean consume = !client.player.getAbilities().instabuild;
+        spawnDisplay(placedStack, state, false, entityId -> {
+            if (consume) {
+                server.execute(() -> {
+                    ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerId);
+                    if (serverPlayer != null) {
+                        ItemStack serverStack = serverPlayer.getItemInHand(hand);
+                        if (serverStack.is(Items.GOLDEN_HORSE_ARMOR)) {
+                            serverStack.shrink(1);
+                        }
+                    }
+                });
+            }
+            String name = placedStack.getHoverName().getString();
+            client.gui.setScreen(new AdvancedModelEditorScreen(
+                entityId, name, placedStack, state));
+        });
+        return true;
     }
 
     private static InteractionResult useEntity(
