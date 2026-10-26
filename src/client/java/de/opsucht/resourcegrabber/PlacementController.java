@@ -358,8 +358,9 @@ final class PlacementController {
                 || goldenHorseArmorOnly && !stack.is(Items.GOLDEN_HORSE_ARMOR)) {
                 continue;
             }
-            Vec3 targetPosition = entity instanceof ArmorStand stand
-                ? entity.position().add(0.0D, ARMOR_STAND_HEAD_OFFSET * stand.getScale(), 0.0D)
+            float scale = readState(entity).scale();
+            Vec3 targetPosition = entity instanceof ArmorStand
+                ? entity.position().add(0.0D, ARMOR_STAND_HEAD_OFFSET * scale, 0.0D)
                 : entity.position();
             Vec3 delta = targetPosition.subtract(eye);
             double distance = delta.dot(look);
@@ -367,11 +368,8 @@ final class PlacementController {
                 continue;
             }
             double perpendicularSquared = delta.lengthSqr() - distance * distance;
-            double targetRadius = Math.sqrt(toleranceSquared);
-            if (entity instanceof ArmorStand stand) {
-                targetRadius = Math.max(targetRadius, Math.min(MAX_SCALED_TARGET_RADIUS,
-                    0.75D + stand.getScale() * 0.75D));
-            }
+            double targetRadius = Math.max(Math.sqrt(toleranceSquared),
+                Math.min(MAX_SCALED_TARGET_RADIUS, 0.75D + scale * 0.75D));
             if (perpendicularSquared <= targetRadius * targetRadius) {
                 bestDistance = distance;
                 bestId = entity.getUUID();
