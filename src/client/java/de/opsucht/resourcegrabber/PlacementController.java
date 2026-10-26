@@ -43,6 +43,11 @@ import org.joml.Vector3f;
 
 final class PlacementController {
     private static final double ARMOR_STAND_HEAD_OFFSET = 1.44D;
+    private static final double MAX_TARGET_DISTANCE = 16.0D;
+    private static final double MAX_MODEL_SCALE = 20.0D;
+    private static final double MAX_SCALED_TARGET_RADIUS = 12.0D;
+    private static final double TARGET_SEARCH_RADIUS = MAX_TARGET_DISTANCE
+        + ARMOR_STAND_HEAD_OFFSET * MAX_MODEL_SCALE;
     private static final String MODEL_TAG = "resourcegrabber_model";
     private static CustomItemEntry pendingEntry;
     private static UUID previewEntityId;
@@ -335,14 +340,14 @@ final class PlacementController {
         }
         Vec3d eye = client.player.getEyePos();
         Vec3d look = client.player.getRotationVec(1.0F).normalize();
-        double bestDistance = 8.0D;
+        double bestDistance = MAX_TARGET_DISTANCE;
         UUID bestId = null;
         List<Entity> candidates = new ArrayList<>();
         candidates.addAll(client.world.getEntitiesByClass(
             DisplayEntity.ItemDisplayEntity.class,
-            client.player.getBoundingBox().expand(8.0D), entity -> true));
+            client.player.getBoundingBox().expand(TARGET_SEARCH_RADIUS), entity -> true));
         candidates.addAll(client.world.getEntitiesByClass(ArmorStandEntity.class,
-            client.player.getBoundingBox().expand(8.0D), entity -> true));
+            client.player.getBoundingBox().expand(TARGET_SEARCH_RADIUS), entity -> true));
         for (Entity entity : candidates) {
             ItemStack stack = modelStack(entity);
             if (stack.isEmpty()
@@ -361,7 +366,12 @@ final class PlacementController {
                 continue;
             }
             double perpendicularSquared = delta.lengthSquared() - distance * distance;
-            if (perpendicularSquared <= toleranceSquared) {
+            double targetRadius = Math.sqrt(toleranceSquared);
+            if (entity instanceof ArmorStandEntity stand) {
+                targetRadius = Math.max(targetRadius, Math.min(MAX_SCALED_TARGET_RADIUS,
+                    0.75D + stand.getScale() * 0.75D));
+            }
+            if (perpendicularSquared <= targetRadius * targetRadius) {
                 bestDistance = distance;
                 bestId = entity.getUuid();
             }
