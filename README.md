@@ -16,8 +16,8 @@ for their Custom Model Data items.
 - Provides selectable item cards, visible Give/Place/Wear/Details actions,
   persistent favorites, category filters, status badges, and a responsive detail
   panel for item IDs, model paths, CMD values, lore, and ChestShop data.
-- Places any listed model as a persistent `item_display` in singleplayer by
-  right-clicking it, then right-clicking a block in the world.
+- Places Golden Horse Armor models on invisible marker armor stands, matching
+  the server-side helmet rendering context. Other item types use `item_display`.
 - Opens a compact placement editor for precise position, rotation, scale, and
   removal controls. Placement works without cheats or `/summon` commands.
 - Reopens the editor for existing item displays with `/customitems edit`:
