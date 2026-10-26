@@ -18,7 +18,7 @@
   "message.resourcegrabber.placement_cancelled": "Resource Grabber: Platzierung abgebrochen.",
   "message.resourcegrabber.edit_mode": "Bearbeitungsmodus aktiv · Modell ansehen und rechtsklicken · ESC bricht ab.",
   "message.resourcegrabber.edit_target": "Modell erkannt · Rechtsklick öffnet den Editor.",
-  "message.resourcegrabber.edit_no_target": "Kein Item-Display im Fadenkreuz gefunden.",
+  "message.resourcegrabber.edit_no_target": "Kein platziertes Modell im Fadenkreuz · ESC beendet den Bearbeitungsmodus.",
   "message.resourcegrabber.model_broken": "Modell abgebaut · Gegenstand wurde zurückgegeben.",
   "message.resourcegrabber.placement_failed": "Resource Grabber: Das Modell konnte nicht platziert werden.",
   "message.resourcegrabber.model_duplicated": "Resource Grabber: Modell dupliziert.",

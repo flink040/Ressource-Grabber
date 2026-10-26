@@ -87,6 +87,9 @@ final class PlacementController {
             return false;
         }
         cancel();
+        editMode = false;
+        editTargetId = null;
+        announcedEditTargetId = null;
         pendingEntry = entry;
         commitRequested = false;
         float yaw = snap(client.player.getYaw(), 15.0F);
@@ -118,6 +121,9 @@ final class PlacementController {
         previewEntityId = null;
         previewState = null;
         commitRequested = false;
+        editMode = false;
+        editTargetId = null;
+        announcedEditTargetId = null;
     }
 
     static void update(UUID entityId, PlacementState state) {
@@ -201,8 +207,12 @@ final class PlacementController {
         if (world.isClient() && hand == Hand.MAIN_HAND && editMode) {
             return selectEditTarget() ? ActionResult.SUCCESS : ActionResult.FAIL;
         }
-        if (!world.isClient() || hand != Hand.MAIN_HAND || pendingEntry == null) {
+        if (!world.isClient() || hand != Hand.MAIN_HAND) {
             return ActionResult.PASS;
+        }
+        if (pendingEntry == null) {
+            return placeHeldGoldenHorseArmor(player, hand, hit)
+                ? ActionResult.SUCCESS : ActionResult.PASS;
         }
         previewState = stateAt(hit, player.getYaw());
         commitRequested = true;
@@ -211,6 +221,40 @@ final class PlacementController {
             finishCommit();
         }
         return ActionResult.SUCCESS;
+    }
+
+    private static boolean placeHeldGoldenHorseArmor(
+        net.minecraft.entity.player.PlayerEntity player, Hand hand, BlockHitResult hit
+    ) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        MinecraftServer server = client.getServer();
+        ItemStack heldStack = player.getStackInHand(hand);
+        if (server == null || client.player == null
+            || !heldStack.isOf(Items.GOLDEN_HORSE_ARMOR)) {
+            return false;
+        }
+        ItemStack placedStack = heldStack.copy();
+        placedStack.setCount(1);
+        PlacementState state = stateAt(hit, player.getYaw());
+        UUID playerId = client.player.getUuid();
+        boolean consume = !client.player.getAbilities().creativeMode;
+        spawnDisplay(placedStack, state, false, entityId -> {
+            if (consume) {
+                server.execute(() -> {
+                    ServerPlayerEntity serverPlayer = server.getPlayerManager().getPlayer(playerId);
+                    if (serverPlayer != null) {
+                        ItemStack serverStack = serverPlayer.getStackInHand(hand);
+                        if (serverStack.isOf(Items.GOLDEN_HORSE_ARMOR)) {
+                            serverStack.decrement(1);
+                        }
+                    }
+                });
+            }
+            String name = placedStack.getName().getString();
+            client.setScreen(new AdvancedModelEditorScreen(
+                entityId, name, placedStack, state));
+        });
+        return true;
     }
 
     private static ActionResult useEntity(
