@@ -14,6 +14,6 @@ public interface ItemDisplayEntityAccessor {
     @Invoker("setItemStack")
     void resourcegrabber$setItemStack(ItemStack stack);
 
-    @Invoker("setItemDisplayContext")
+    @Invoker("setItemTransform")
     void resourcegrabber$setItemDisplayContext(ItemDisplayContext context);
 }
